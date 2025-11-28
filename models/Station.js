@@ -4,8 +4,7 @@ const reviewSchema = new mongoose.Schema({
     reviewId: {
         type: String,
         required: true,
-        unique: true,
-        match: /^REV\d{3}$/,
+        match: /^REV\d{4}$/,
     },
     userId: {
         type: String,
@@ -118,8 +117,13 @@ const stationSchema = new mongoose.Schema(
         connectorTypes: [
             {
                 type: String,
-                enum: ['Type 1', 'Type 2', 'CCS', 'CHAdeMO', 'Tesla', 'GB/T'],
-            },
+                required: true,
+                enum: [
+                    'Type 1', 'Type 2', 'J1772', 'Mennekes',
+                    'CCS', 'CCS1', 'CCS2', 'CHAdeMO',
+                    'Tesla', 'NACS', 'Tesla Supercharger', 'GB/T'
+                ]
+            }
         ],
         installationYear: {
             type: Number,

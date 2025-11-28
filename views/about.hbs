@@ -1,0 +1,86 @@
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header bg-info text-white">
+                <h2 class="mb-0"><i class="fas fa-info-circle me-2"></i>About ChargeIT</h2>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <i class="fas fa-charging-station fa-5x text-success mb-3"></i>
+                    <h3>Global Electric Vehicle Charging Station Locator</h3>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <h4>Our Mission</h4>
+                        <p>
+                            ChargeIT is dedicated to making electric vehicle charging accessible and convenient 
+                            for everyone. We believe in accelerating the transition to sustainable transportation 
+                            by providing reliable, up-to-date information about charging stations worldwide.
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h4>What We Do</h4>
+                        <p>
+                            We aggregate data from thousands of charging stations across the globe, providing 
+                            EV owners with comprehensive information about locations, pricing, availability, 
+                            and user experiences.
+                        </p>
+                    </div>
+                </div>
+
+                <h4 class="mb-3">Features</h4>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="text-center">
+                            <i class="fas fa-search fa-2x text-primary mb-2"></i>
+                            <h6>Smart Search</h6>
+                            <small class="text-muted">Find stations by location, type, and availability</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="text-center">
+                            <i class="fas fa-dollar-sign fa-2x text-success mb-2"></i>
+                            <h6>Cost Comparison</h6>
+                            <small class="text-muted">Compare pricing across different stations</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="text-center">
+                            <i class="fas fa-star fa-2x text-warning mb-2"></i>
+                            <h6>User Reviews</h6>
+                            <small class="text-muted">Read authentic experiences from other EV owners</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 p-3 bg-light rounded">
+                    <h5>Team Information</h5>
+                    <p class="mb-2"><strong>Group 7 - ITE5315 Project</strong></p>
+                    <ul class="list-unstyled">
+                        <li>👨‍💻 Dev Patel - Full Stack Developer</li>
+                        <li>👨‍💻 Deep Patel - Full Stack Developer</li>
+                        <li>👨‍💻 Mohammad Fawzaan Khan Juhoor - Full Stack Developer</li>
+                    </ul>
+                    <p class="mb-0">
+                        This project is part of our Web Development with Node.js course, demonstrating 
+                        full-stack development skills with MongoDB, Express.js, Handlebars, and Node.js.
+                    </p>
+                </div>
+
+                <div class="mt-4 p-3 bg-light rounded">
+                    <h5>Technical Information</h5>
+                    <p><strong>Database Status:</strong> 
+                        {{#if dbConnected}}
+                            <span class="text-success">✅ Connected</span>
+                        {{else}}
+                            <span class="text-warning">⚠️ Using Sample Data</span>
+                        {{/if}}
+                    </p>
+                    <p><strong>Environment:</strong> {{NODE_ENV}}</p>
+                    <p><strong>Version:</strong> {{appVersion}}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

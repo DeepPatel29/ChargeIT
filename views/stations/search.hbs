@@ -1,0 +1,149 @@
+<div class="row">
+    <div class="col-md-4">
+        <!-- Search Filters -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Search Filters</h5>
+            </div>
+            <div class="card-body">
+                <form method="GET" action="/stations/search">
+                    <div class="mb-3">
+                        <label for="city" class="form-label">City</label>
+                        <input type="text" class="form-control" id="city" name="city" 
+                               value="{{searchQuery.city}}" list="cities">
+                        <datalist id="cities">
+                            {{#each cities}}
+                                <option value="{{this}}">
+                            {{/each}}
+                        </datalist>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="country" class="form-label">Country</label>
+                        <input type="text" class="form-control" id="country" name="country"
+                               value="{{searchQuery.country}}" list="countries">
+                        <datalist id="countries">
+                            {{#each countries}}
+                                <option value="{{this}}">
+                            {{/each}}
+                        </datalist>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="chargerType" class="form-label">Charger Type</label>
+                        <select class="form-select" id="chargerType" name="chargerType">
+                            <option value="">Any Type</option>
+                            {{#each chargerTypes}}
+                                <option value="{{this}}" {{#eq this ../searchQuery.chargerType}}selected{{/eq}}>
+                                    {{this}}
+                                </option>
+                            {{/each}}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="minRating" class="form-label">Minimum Rating</label>
+                        <select class="form-select" id="minRating" name="minRating">
+                            <option value="">Any Rating</option>
+                            <option value="4" {{#eq searchQuery.minRating "4"}}selected{{/eq}}>4+ Stars</option>
+                            <option value="3" {{#eq searchQuery.minRating "3"}}selected{{/eq}}>3+ Stars</option>
+                            <option value="2" {{#eq searchQuery.minRating "2"}}selected{{/eq}}>2+ Stars</option>
+                        </select>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search me-2"></i>Search Stations
+                        </button>
+                        <a href="/stations/search" class="btn btn-outline-secondary">Clear Filters</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <!-- Search Results -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>Search Results</h2>
+            <span class="badge bg-primary fs-6">{{stations.length}} stations found</span>
+        </div>
+        
+        {{#if stations.length}}
+            <div class="row g-3">
+                {{#each stations}}
+                <div class="col-12">
+                    <div class="card station-card h-100 shadow-sm">
+                        <div class="row g-0">
+                            <div class="col-md-4">
+                                <img src="{{this.imageUrl}}" class="img-fluid rounded-start h-100" 
+                                     alt="{{this.location.city}} Station" style="object-fit: cover; height: 200px;">
+                            </div>
+                            <div class="col-md-8">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h5 class="card-title">{{this.location.city}}, {{this.location.country}}</h5>
+                                        <span class="badge bg-primary">{{this.chargerType}}</span>
+                                    </div>
+                                    
+                                    <p class="card-text text-muted small mb-3">
+                                        <i class="fas fa-map-marker-alt me-1"></i>
+                                        {{this.location.address}}
+                                    </p>
+                                    
+                                    <div class="station-info mb-3">
+                                        <div class="row small">
+                                            <div class="col-6">
+                                                <i class="fas fa-bolt me-1 text-warning"></i>
+                                                {{this.chargingCapacityKW}}kW
+                                            </div>
+                                            <div class="col-6">
+                                                <i class="fas fa-dollar-sign me-1 text-success"></i>
+                                                ${{this.costPerKWh}}/kWh
+                                            </div>
+                                            <div class="col-6">
+                                                <i class="fas fa-road me-1 text-info"></i>
+                                                {{this.distanceToCityKm}}km to city
+                                            </div>
+                                            <div class="col-6">
+                                                <i class="fas fa-car me-1 text-secondary"></i>
+                                                {{this.parkingSpots}} spots
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="rating">
+                                            {{#times this.rating}}
+                                                <i class="fas fa-star text-warning small"></i>
+                                            {{/times}}
+                                            {{#lt this.rating 5}}
+                                                {{#times (subtract 5 this.rating)}}
+                                                    <i class="far fa-star text-warning small"></i>
+                                                {{/times}}
+                                            {{/lt}}
+                                            <small class="text-muted ms-1">({{this.reviews.length}})</small>
+                                        </div>
+                                        <a href="/stations/{{this.stationId}}" class="btn btn-outline-primary btn-sm">
+                                            View Details <i class="fas fa-arrow-right ms-1"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+        {{else}}
+            <div class="text-center py-5">
+                <i class="fas fa-search fa-4x text-muted mb-3"></i>
+                <h3 class="text-muted">No stations found</h3>
+                <p class="text-muted">Try adjusting your search filters to find more stations.</p>
+                <a href="/stations" class="btn btn-primary mt-3">
+                    <i class="fas fa-charging-station me-2"></i>Browse All Stations
+                </a>
+            </div>
+        {{/if}}
+    </div>
+</div>

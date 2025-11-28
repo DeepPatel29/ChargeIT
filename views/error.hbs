@@ -1,0 +1,53 @@
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-exclamation-triangle fa-4x text-warning mb-4"></i>
+                    <h1 class="display-4 text-danger">Oops!</h1>
+                    <h3 class="mb-4">{{message}}</h3>
+                    
+                    {{#if error}}
+                        {{#if (eq error.code 'MODULE_NOT_FOUND')}}
+                            <div class="alert alert-warning">
+                                <h5>Module Missing</h5>
+                                <p>This usually means a required file or dependency is missing.</p>
+                            </div>
+                        {{else if (eq error.name 'MongooseError')}}
+                            <div class="alert alert-info">
+                                <h5>Database Connection Issue</h5>
+                                <p>Unable to connect to the database. Please check your connection settings.</p>
+                                <p><small>Error: {{error.message}}</small></p>
+                            </div>
+                        {{/if}}
+                        
+                        {{#if (eq ../NODE_ENV 'development')}}
+                            <div class="mt-4">
+                                <h5>Development Details:</h5>
+                                <div class="alert alert-secondary text-start">
+                                    <pre class="mb-0"><code>{{error.stack}}</code></pre>
+                                </div>
+                            </div>
+                        {{/if}}
+                    {{else}}
+                        <p class="text-muted mb-4">
+                            The page you're looking for doesn't exist or has been moved.
+                        </p>
+                    {{/if}}
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-center mt-4">
+                        <a href="/" class="btn btn-primary me-md-2">
+                            <i class="fas fa-home me-2"></i>Go Home
+                        </a>
+                        <a href="/stations" class="btn btn-outline-primary">
+                            <i class="fas fa-charging-station me-2"></i>Browse Stations
+                        </a>
+                        <button onclick="history.back()" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Go Back
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

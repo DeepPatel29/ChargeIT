@@ -1,0 +1,135 @@
+<!-- Hero Section -->
+<section class="hero-section bg-primary text-white py-5 rounded mb-4">
+    <div class="container text-center">
+        <h1 class="display-4 fw-bold mb-3">
+            <i class="fas fa-charging-station me-3"></i>
+            Find EV Charging Stations Worldwide
+        </h1>
+        <p class="lead mb-4">Discover, compare, and navigate to the best electric vehicle charging stations near you.</p>
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <form action="/stations/search" method="GET" class="d-flex gap-2">
+                    <input type="text" name="city" class="form-control form-control-lg" placeholder="Enter city name..." required>
+                    <button type="submit" class="btn btn-warning btn-lg">
+                        <i class="fas fa-search me-2"></i>Search
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Stats Section -->
+<section class="stats-section mb-5">
+    <div class="container">
+        <div class="row text-center">
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <i class="fas fa-charging-station fa-3x text-success mb-3"></i>
+                        <h3 class="text-primary">{{totalStations}}+</h3>
+                        <p class="text-muted">Charging Stations</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <i class="fas fa-globe-americas fa-3x text-info mb-3"></i>
+                        <h3 class="text-primary">{{countries}}+</h3>
+                        <p class="text-muted">Countries Covered</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <i class="fas fa-bolt fa-3x text-warning mb-3"></i>
+                        <h3 class="text-primary">24/7</h3>
+                        <p class="text-muted">Availability Tracking</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Featured Stations -->
+<section class="featured-stations mb-5">
+    <div class="container">
+        <h2 class="text-center mb-4">Featured Charging Stations</h2>
+        <div class="row g-4">
+            {{#each featuredStations}}
+            <div class="col-md-6 col-lg-4">
+                <div class="card station-card h-100 shadow-sm">
+                    <img src="{{this.imageUrl}}" class="card-img-top" alt="{{this.location.city}} Station" style="height: 200px; object-fit: cover;">
+                    <div class="card-body">
+                        <h5 class="card-title">{{this.location.city}}, {{this.location.country}}</h5>
+                        <p class="card-text">
+                            <small class="text-muted">
+                                <i class="fas fa-map-marker-alt me-1"></i>
+                                {{this.location.address}}
+                            </small>
+                        </p>
+                        <div class="mb-2">
+                            <span class="badge bg-primary">{{this.chargerType}}</span>
+                            <span class="badge bg-success">${{this.costPerKWh}}/kWh</span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="rating">
+                                {{#times this.rating}}
+                                    <i class="fas fa-star text-warning"></i>
+                                {{/times}}
+                                {{#lt this.rating 5}}
+                                    {{#times (subtract 5 this.rating)}}
+                                        <i class="far fa-star text-warning"></i>
+                                    {{/times}}
+                                {{/lt}}
+                                <small class="text-muted ms-1">({{this.rating}})</small>
+                            </div>
+                            <a href="/stations/{{this.stationId}}" class="btn btn-outline-primary btn-sm">
+                                View Details
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{/each}}
+        </div>
+        <div class="text-center mt-4">
+            <a href="/stations" class="btn btn-primary btn-lg">
+                View All Stations <i class="fas fa-arrow-right ms-2"></i>
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="features-section bg-light py-5 rounded">
+    <div class="container">
+        <h2 class="text-center mb-5">Why Choose ChargeIT?</h2>
+        <div class="row g-4">
+            <div class="col-md-4 text-center">
+                <div class="feature-icon mb-3">
+                    <i class="fas fa-search-location fa-3x text-primary"></i>
+                </div>
+                <h4>Smart Search</h4>
+                <p class="text-muted">Find stations by location, charger type, availability, and user ratings.</p>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="feature-icon mb-3">
+                    <i class="fas fa-dollar-sign fa-3x text-success"></i>
+                </div>
+                <h4>Cost Comparison</h4>
+                <p class="text-muted">Compare pricing and choose the most cost-effective charging options.</p>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="feature-icon mb-3">
+                    <i class="fas fa-leaf fa-3x text-info"></i>
+                </div>
+                <h4>Eco-Friendly</h4>
+                <p class="text-muted">Discover stations using renewable energy for sustainable charging.</p>
+            </div>
+        </div>
+    </div>
+</section>
