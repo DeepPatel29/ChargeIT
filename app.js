@@ -1,14 +1,14 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const session = require('express-session');
-const MongoStore = require('connect-mongo'); // Import Connect Mongo
+// const MongoStore = require('connect-mongo'); // DISABLED TO PREVENT CRASH
 const { engine } = require('express-handlebars');
 const path = require('path');
 require('dotenv').config();
 
 const app = express();
 
-// --- 1. Trust Proxy (Required for Vercel/Render) ---
+// --- Trust Proxy (Required for Vercel/Render) ---
 // This ensures cookies work correctly behind their load balancers
 app.set('trust proxy', 1);
 
@@ -18,6 +18,7 @@ const connectDB = require('./config/database');
 let dbConnected = false;
 console.log('🔄 Initializing database connection...');
 
+// "Fire and Forget" connection to prevent app crash if DB is slow
 connectDB().then(conn => {
     if (conn) {
         dbConnected = true;
@@ -77,19 +78,17 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- 2. Session with MongoDB Store (The Fix) ---
+// --- EMERGENCY SESSION SETUP (Memory Store) ---
+// This is stable but will log users out if the server restarts.
+// We use this to fix the 500 error on Vercel immediately.
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'chargeit-secret-key',
+    secret: process.env.SESSION_SECRET || 'chargeit-fallback-secret-key',
     resave: false,
     saveUninitialized: false,
-    store: MongoStore.create({
-        mongoUrl: process.env.MONGO_URI, // Stores session in MongoDB
-        collectionName: 'sessions',      // Name of the collection
-        ttl: 24 * 60 * 60                // Session lasts 1 day
-    }),
+    // store: MongoStore.create(...), // REMOVED to fix crash
     cookie: {
-        secure: process.env.NODE_ENV === 'production', // true on Vercel (HTTPS), false on localhost
-        maxAge: 24 * 60 * 60 * 1000,
+        secure: process.env.NODE_ENV === 'production', // true on Vercel (HTTPS)
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
         httpOnly: true,
         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
     }
@@ -121,5 +120,5 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`🚀 ChargeIT Server Started on port ${PORT}`);
 });
-//updates
+
 module.exports = app;
