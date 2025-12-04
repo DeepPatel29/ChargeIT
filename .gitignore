@@ -31,3 +31,4 @@ package-lock.json
 detailed_ev_charging_stations.csv
 detailed_ev_charging_stations.json
 
+firebase-service-account.json

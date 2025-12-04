@@ -2,6 +2,15 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const router = express.Router();
+const crypto = require('crypto'); // Built-in Node module for generating random passwords
+
+// Try to load firebase admin, handle error if not set up yet
+let admin;
+try {
+    admin = require('../config/firebase');
+} catch (error) {
+    console.warn("⚠️ Firebase Admin not initialized. Google Login will not work until 'config/firebase-service-account.json' is present.");
+}
 
 // Registration form
 router.get('/register', (req, res) => {
@@ -162,6 +171,66 @@ router.post('/login', [
             errors: [{ msg: 'Login failed. Please try again.' }],
             formData: req.body
         });
+    }
+});
+
+// Google Login Processing
+router.post('/google', async (req, res) => {
+    const { token } = req.body;
+
+    if (!admin) {
+        return res.status(500).json({ success: false, message: 'Server configuration error: Firebase not initialized.' });
+    }
+
+    try {
+        // Verify the token sent from the client
+        const decodedToken = await admin.auth().verifyIdToken(token);
+        const { email, name, uid } = decodedToken;
+
+        let user = await User.findOne({ email });
+
+        if (!user) {
+            // Create a new user if they don't exist
+            // We generate a random password to satisfy the model requirement
+            // The user won't know this password, but can login via Google
+            const randomPassword = crypto.randomBytes(16).toString('hex');
+            
+            // Generate a unique username if name is missing or taken
+            let username = name || email.split('@')[0];
+            // Basic check to ensure unique username (simple implementation)
+            const userExists = await User.findOne({ username });
+            if (userExists) {
+                username += Math.floor(Math.random() * 1000);
+            }
+
+            user = new User({
+                username: username,
+                email: email,
+                password: randomPassword,
+                isAdmin: false
+            });
+            await user.save();
+        }
+
+        // Create Session
+        req.session.user = {
+            id: user._id,
+            username: user.username,
+            email: user.email,
+            isAdmin: user.isAdmin
+        };
+
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error:', err);
+                return res.json({ success: false, message: 'Session error' });
+            }
+            res.json({ success: true });
+        });
+
+    } catch (error) {
+        console.error('Google Auth Error:', error);
+        res.status(401).json({ success: false, message: 'Invalid token' });
     }
 });
 

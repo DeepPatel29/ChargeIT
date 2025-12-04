@@ -27,10 +27,20 @@
                         <input type="password" class="form-control" id="password" name="password" required>
                     </div>
                     
-                    <button type="submit" class="btn btn-success w-100">
+                    <button type="submit" class="btn btn-success w-100 mb-3">
                         <i class="fas fa-sign-in-alt me-2"></i>Login
                     </button>
                 </form>
+
+                <div class="position-relative mb-4">
+                    <hr>
+                    <span class="position-absolute top-50 start-50 translate-middle px-3 bg-white text-muted">OR</span>
+                </div>
+
+                <button id="google-login-btn" class="btn btn-outline-dark w-100">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" style="width: 20px; margin-right: 8px;">
+                    Sign in with Google
+                </button>
                 
                 <div class="text-center mt-3">
                     <p>Don't have an account? <a href="/auth/register">Register here</a></p>
@@ -39,3 +49,50 @@
         </div>
     </div>
 </div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+  // REPLACE THIS WITH YOUR FIREBASE CONFIG FROM CONSOLE
+const firebaseConfig = {
+  apiKey: "AIzaSyCYYMDnhJNf1KN44DCAPswGC-6JDJXotds",
+  authDomain: "chargeit-cd16b.firebaseapp.com",
+  projectId: "chargeit-cd16b",
+  storageBucket: "chargeit-cd16b.firebasestorage.app",
+  messagingSenderId: "631188519830",
+  appId: "1:631188519830:web:45632b14e4dfb5c3633bb7",
+  measurementId: "G-LDF1LGT867"
+};
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
+
+  document.getElementById('google-login-btn').addEventListener('click', async () => {
+      try {
+          const result = await signInWithPopup(auth, provider);
+          const idToken = await result.user.getIdToken();
+
+          // Send token to backend
+          const response = await fetch('/auth/google', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ token: idToken })
+          });
+
+          const data = await response.json();
+          if (data.success) {
+              window.location.href = '/';
+          } else {
+              alert('Google Login Failed: ' + data.message);
+          }
+      } catch (error) {
+          console.error('Error during Google login:', error);
+          alert('Error logging in with Google');
+      }
+  });
+</script>
