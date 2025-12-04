@@ -30,9 +30,14 @@
                     <li class="nav-item">
                         <a class="nav-link" href="/stations/search">Search</a>
                     </li>
+                    <!-- ADMIN LINK: Only visible to admins -->
+                    {{#if user.isAdmin}}
                     <li class="nav-item">
-                        <a class="nav-link" href="/about">About</a>
+                        <a class="nav-link fw-bold text-warning" href="/admin">
+                            <i class="fas fa-shield-alt me-1"></i>Admin Panel
+                        </a>
                     </li>
+                    {{/if}}
                 </ul>
                 <ul class="navbar-nav">
                     {{#if user}}
@@ -41,8 +46,7 @@
                                 <i class="fas fa-user me-1"></i> {{user.username}}
                             </a>
                             <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="/profile">Profile</a></li>
-                                <li><a class="dropdown-item" href="/favorites">Favorites</a></li>
+                                <li><a class="dropdown-item" href="/favorites">My Favorites</a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <form method="POST" action="/auth/logout" class="d-inline">
@@ -66,20 +70,6 @@
 
     <!-- Main Content -->
     <main class="container mt-4">
-        {{#if success_msg}}
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                {{success_msg}}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        {{/if}}
-        
-        {{#if error_msg}}
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                {{error_msg}}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        {{/if}}
-        
         {{{body}}}
     </main>
 

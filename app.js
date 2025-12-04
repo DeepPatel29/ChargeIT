@@ -58,7 +58,12 @@ app.engine('hbs', engine({
         json: (context) => JSON.stringify(context, null, 2),
         length: (array) => array ? array.length : 0,
         uppercase: (str) => str ? str.toUpperCase() : '',
-        ifEq: (a, b, options) => a === b ? options.fn(this) : options.inverse(this)
+        ifEq: (a, b, options) => a === b ? options.fn(this) : options.inverse(this),
+        // Helper to check if an array includes a value (useful for checkboxes)
+        includes: (array, value) => {
+            if (!array) return false;
+            return array.includes(value);
+        }
     }
 }));
 
@@ -69,7 +74,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Simple Session (No Connect-Mongo)
+// Simple Session
 app.use(session({
     secret: process.env.SESSION_SECRET || 'chargeit-development-secret-key',
     resave: false,
@@ -93,6 +98,8 @@ app.use((req, res, next) => {
 app.use('/', require('./routes/index'));
 app.use('/auth', require('./routes/auth'));
 app.use('/stations', require('./routes/stations'));
+// NEW: Admin Route
+app.use('/admin', require('./routes/admin'));
 
 // 404 & Error Handlers
 app.use((req, res) => {
