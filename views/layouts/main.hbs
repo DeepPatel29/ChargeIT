@@ -8,8 +8,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="/css/style.css" rel="stylesheet">
 </head>
-<body>
-    <!-- Navigation -->
+<body class="d-flex flex-column min-vh-100">
     <nav class="navbar navbar-expand-lg navbar-dark bg-success">
         <div class="container">
             <a class="navbar-brand" href="/">
@@ -30,9 +29,13 @@
                     <li class="nav-item">
                         <a class="nav-link" href="/stations/search">Search</a>
                     </li>
+                    {{#if user.isAdmin}}
                     <li class="nav-item">
-                        <a class="nav-link" href="/about">About</a>
+                        <a class="nav-link fw-bold text-warning" href="/admin">
+                            <i class="fas fa-shield-alt me-1"></i>Admin Panel
+                        </a>
                     </li>
+                    {{/if}}
                 </ul>
                 <ul class="navbar-nav">
                     {{#if user}}
@@ -41,8 +44,7 @@
                                 <i class="fas fa-user me-1"></i> {{user.username}}
                             </a>
                             <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="/profile">Profile</a></li>
-                                <li><a class="dropdown-item" href="/favorites">Favorites</a></li>
+                                <li><a class="dropdown-item" href="/favorites">My Favorites</a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <form method="POST" action="/auth/logout" class="d-inline">
@@ -64,26 +66,11 @@
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <main class="container mt-4">
-        {{#if success_msg}}
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                {{success_msg}}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        {{/if}}
-        
-        {{#if error_msg}}
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                {{error_msg}}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        {{/if}}
-        
+    {{!-- flex-grow-1 ensures this section expands to fill available space, pushing footer down --}}
+    <main class="container mt-4 flex-grow-1">
         {{{body}}}
     </main>
 
-    <!-- Footer -->
     <footer class="bg-dark text-light mt-5 py-4">
         <div class="container">
             <div class="row">
