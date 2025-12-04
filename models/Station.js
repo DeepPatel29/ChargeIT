@@ -163,7 +163,7 @@ const stationSchema = new mongoose.Schema(
     }
 );
 
-// Create compound index for geospatial queries
+// Original indexes
 stationSchema.index({ 'location.geo.lat': 1, 'location.geo.lng': 1 });
 stationSchema.index({ 'location.city': 1, 'location.country': 1 });
 

@@ -69,8 +69,15 @@
                         <small class="text-muted">Based on {{station.reviews.length}} reviews</small>
                     </div>
                     <div class="station-actions">
-                        <button class="btn btn-outline-primary me-2">
-                            <i class="fas fa-heart me-1"></i>Save
+                        <button class="btn btn-outline-primary me-2 favorite-btn" 
+                                data-station-id="{{station.stationId}}"
+                                data-authenticated="{{#if user}}true{{/if}}">
+                            {{#if isFavorite}}
+                                <i class="fas fa-heart text-danger me-1"></i>
+                            {{else}}
+                                <i class="far fa-heart me-1"></i>
+                            {{/if}}
+                            Save
                         </button>
                         <button class="btn btn-primary">
                             <i class="fas fa-directions me-1"></i>Get Directions
@@ -117,9 +124,10 @@
                 
                 {{#if user}}
                     <div class="mt-4">
-                        <button class="btn btn-primary">
+                        <!-- THIS IS THE FIXED BUTTON -->
+                        <a href="/stations/{{station.stationId}}/review" class="btn btn-primary">
                             <i class="fas fa-edit me-1"></i>Write a Review
-                        </button>
+                        </a>
                     </div>
                 {{else}}
                     <div class="alert alert-info mt-3">

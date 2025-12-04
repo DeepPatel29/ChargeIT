@@ -1,12 +1,11 @@
 const express = require('express');
 const Station = require('../models/Station');
+const User = require('../models/User'); 
 const router = express.Router();
 
 // Get all stations with pagination
 router.get('/', async (req, res) => {
     try {
-        console.log('Stations list accessed');
-
         let stations = [];
         let totalStations = 0;
         let dbError = false;
@@ -15,10 +14,8 @@ router.get('/', async (req, res) => {
         const perPage = parseInt(req.query.perPage) || 12;
         const skip = (page - 1) * perPage;
 
-        // Check if database is connected
         if (req.app.locals.dbConnected && req.app.locals.dbConnected()) {
             try {
-                console.log('Fetching stations from database...');
                 stations = await Station.find()
                     .sort({ 'location.city': 1 })
                     .skip(skip)
@@ -26,7 +23,6 @@ router.get('/', async (req, res) => {
                     .lean();
 
                 totalStations = await Station.countDocuments();
-                console.log(`✅ Found ${stations.length} stations`);
             } catch (dbErr) {
                 console.error('Database error:', dbErr.message);
                 dbError = true;
@@ -34,7 +30,6 @@ router.get('/', async (req, res) => {
                 totalStations = getSampleStations().length;
             }
         } else {
-            console.log('Using sample data for stations');
             dbError = true;
             const allSampleStations = getSampleStations();
             stations = allSampleStations.slice(skip, skip + perPage);
@@ -53,7 +48,6 @@ router.get('/', async (req, res) => {
             dbError
         });
     } catch (error) {
-        console.error('Stations list error:', error);
         res.render('stations/list', {
             title: 'All Charging Stations - ChargeIT',
             stations: getSampleStations().slice(0, 12),
@@ -70,13 +64,10 @@ router.get('/', async (req, res) => {
 // Search stations
 router.get('/search', async (req, res) => {
     try {
-        console.log('Search accessed with query:', req.query);
-
         const { city, country, chargerType, minRating } = req.query;
         let stations = [];
         let dbError = false;
 
-        // Check if database is connected
         if (req.app.locals.dbConnected && req.app.locals.dbConnected()) {
             try {
                 let query = {};
@@ -86,25 +77,19 @@ router.get('/search', async (req, res) => {
                 if (chargerType) query.chargerType = chargerType;
                 if (minRating) query.rating = { $gte: parseFloat(minRating) };
 
-                console.log('Search query:', query);
                 stations = await Station.find(query)
                     .sort({ rating: -1 })
                     .limit(50)
                     .lean();
-
-                console.log(`✅ Search found ${stations.length} stations`);
             } catch (dbErr) {
-                console.error('Database search error:', dbErr.message);
                 dbError = true;
                 stations = filterSampleStations(req.query);
             }
         } else {
-            console.log('Using sample data for search');
             dbError = true;
             stations = filterSampleStations(req.query);
         }
 
-        // Get filter options for the form
         const cities = ['Toronto', 'San Francisco', 'Bangkok', 'Sample City'];
         const countries = ['USA', 'Thailand', 'Sample Country', 'Canada'];
         const chargerTypes = ['AC Level 1', 'AC Level 2', 'DC Fast Charger', 'Tesla Supercharger'];
@@ -119,7 +104,6 @@ router.get('/search', async (req, res) => {
             dbError
         });
     } catch (error) {
-        console.error('Search error:', error);
         res.render('stations/search', {
             title: 'Search Stations - ChargeIT',
             stations: [],
@@ -133,44 +117,120 @@ router.get('/search', async (req, res) => {
     }
 });
 
+// NEW: GET Review Form
+router.get('/:id/review', async (req, res) => {
+    // 1. Check Login
+    if (!req.session.user) {
+        return res.redirect('/auth/login');
+    }
+
+    try {
+        // 2. Find Station
+        let station = null;
+        if (req.app.locals.dbConnected && req.app.locals.dbConnected()) {
+            station = await Station.findOne({ stationId: req.params.id }).lean();
+        }
+
+        if (!station) {
+            return res.status(404).render('error', { message: 'Station not found or DB unavailable' });
+        }
+
+        res.render('stations/review', {
+            title: `Review ${station.location.city} Station`,
+            station
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).render('error', { message: 'Error loading review form' });
+    }
+});
+
+// NEW: POST Submit Review
+router.post('/:id/review', async (req, res) => {
+    // 1. Check Login
+    if (!req.session.user) {
+        return res.redirect('/auth/login');
+    }
+
+    try {
+        const { rating, comment } = req.body;
+        
+        if (req.app.locals.dbConnected && req.app.locals.dbConnected()) {
+            const station = await Station.findOne({ stationId: req.params.id });
+            
+            if (!station) {
+                return res.status(404).render('error', { message: 'Station not found' });
+            }
+
+            // 2. Create Review Object
+            // Generate ID matching regex ^REV\d{4}$
+            const randomId = Math.floor(1000 + Math.random() * 9000); 
+            const newReview = {
+                reviewId: `REV${randomId}`,
+                userId: req.session.user.id,
+                userName: req.session.user.username,
+                rating: parseInt(rating),
+                comment: comment,
+                date: new Date(),
+                verifiedPurchase: true // Assuming true for this demo
+            };
+
+            // 3. Add to array
+            station.reviews.push(newReview);
+
+            // 4. Recalculate Average Rating
+            const totalRating = station.reviews.reduce((sum, r) => sum + r.rating, 0);
+            station.rating = (totalRating / station.reviews.length).toFixed(1);
+
+            await station.save();
+            
+            // Redirect back to detail page
+            res.redirect(`/stations/${req.params.id}`);
+        } else {
+            res.render('error', { message: 'Cannot save review: Database unavailable' });
+        }
+    } catch (error) {
+        console.error('Review submit error:', error);
+        res.status(500).render('error', { message: 'Failed to submit review' });
+    }
+});
+
 // Get station by ID
 router.get('/:id', async (req, res) => {
     try {
-        console.log('Station detail accessed for ID:', req.params.id);
-
         let station = null;
         let nearbyStations = [];
         let dbError = false;
+        let isFavorite = false;
 
-        // Check if database is connected
         if (req.app.locals.dbConnected && req.app.locals.dbConnected()) {
             try {
                 station = await Station.findOne({ stationId: req.params.id }).lean();
 
                 if (!station) {
-                    console.log('Station not found in database, using sample data');
                     station = getSampleStations().find(s => s.stationId === req.params.id);
                     dbError = true;
                 } else {
-                    // Find nearby stations (within approximate range)
                     nearbyStations = await Station.find({
                         stationId: { $ne: req.params.id },
                         'location.city': station.location.city
                     }).limit(4).lean();
-                    console.log(`✅ Found ${nearbyStations.length} nearby stations`);
+
+                    if (req.session.user) {
+                        const user = await User.findById(req.session.user.id);
+                        if (user && user.favoriteStations.some(id => id.toString() === station._id.toString())) {
+                            isFavorite = true;
+                        }
+                    }
                 }
             } catch (dbErr) {
-                console.error('Database detail error:', dbErr.message);
                 dbError = true;
                 station = getSampleStations().find(s => s.stationId === req.params.id);
             }
         } else {
-            console.log('Using sample data for station detail');
             dbError = true;
             station = getSampleStations().find(s => s.stationId === req.params.id);
-            nearbyStations = getSampleStations()
-                .filter(s => s.stationId !== req.params.id)
-                .slice(0, 4);
+            nearbyStations = getSampleStations().filter(s => s.stationId !== req.params.id).slice(0, 4);
         }
 
         if (!station) {
@@ -184,10 +244,10 @@ router.get('/:id', async (req, res) => {
             title: `${station.location.city} Station - ChargeIT`,
             station,
             nearbyStations,
-            dbError
+            dbError,
+            isFavorite
         });
     } catch (error) {
-        console.error('Station detail error:', error);
         res.status(500).render('error', {
             title: 'Error - ChargeIT',
             message: 'Error loading station details',
@@ -199,27 +259,21 @@ router.get('/:id', async (req, res) => {
 // Get stations by city
 router.get('/city/:city', async (req, res) => {
     try {
-        console.log('City stations accessed for:', req.params.city);
-
         let stations = [];
         let dbError = false;
 
-        // Check if database is connected
         if (req.app.locals.dbConnected && req.app.locals.dbConnected()) {
             try {
                 stations = await Station.find({
                     'location.city': new RegExp(req.params.city, 'i')
                 }).lean();
-                console.log(`✅ Found ${stations.length} stations in ${req.params.city}`);
             } catch (dbErr) {
-                console.error('Database city error:', dbErr.message);
                 dbError = true;
                 stations = getSampleStations().filter(s =>
                     s.location.city.toLowerCase().includes(req.params.city.toLowerCase())
                 );
             }
         } else {
-            console.log('Using sample data for city stations');
             dbError = true;
             stations = getSampleStations().filter(s =>
                 s.location.city.toLowerCase().includes(req.params.city.toLowerCase())
@@ -236,7 +290,6 @@ router.get('/city/:city', async (req, res) => {
             dbError
         });
     } catch (error) {
-        console.error('City stations error:', error);
         res.render('stations/list', {
             title: `Stations in ${req.params.city} - ChargeIT`,
             stations: [],
@@ -253,23 +306,17 @@ router.get('/city/:city', async (req, res) => {
 // API endpoint for stations
 router.get('/api/stations', async (req, res) => {
     try {
-        console.log('API stations endpoint accessed');
-
         let stations = [];
         let dbError = false;
 
-        // Check if database is connected
         if (req.app.locals.dbConnected && req.app.locals.dbConnected()) {
             try {
                 stations = await Station.find().limit(100).lean();
-                console.log(`✅ API returning ${stations.length} stations`);
             } catch (dbErr) {
-                console.error('Database API error:', dbErr.message);
                 dbError = true;
                 stations = getSampleStations();
             }
         } else {
-            console.log('API using sample data');
             dbError = true;
             stations = getSampleStations();
         }
@@ -282,7 +329,6 @@ router.get('/api/stations', async (req, res) => {
             timestamp: new Date().toISOString()
         });
     } catch (error) {
-        console.error('API stations error:', error);
         res.status(500).json({
             success: false,
             message: 'Error fetching stations',
@@ -293,7 +339,6 @@ router.get('/api/stations', async (req, res) => {
     }
 });
 
-// Helper function to filter sample stations
 function filterSampleStations(query) {
     const { city, country, chargerType, minRating } = query;
     let stations = getSampleStations();
@@ -303,17 +348,14 @@ function filterSampleStations(query) {
             s.location.city.toLowerCase().includes(city.toLowerCase())
         );
     }
-
     if (country) {
         stations = stations.filter(s =>
             s.location.country.toLowerCase().includes(country.toLowerCase())
         );
     }
-
     if (chargerType) {
         stations = stations.filter(s => s.chargerType === chargerType);
     }
-
     if (minRating) {
         stations = stations.filter(s => s.rating >= parseFloat(minRating));
     }
@@ -321,7 +363,6 @@ function filterSampleStations(query) {
     return stations;
 }
 
-// Sample data function
 function getSampleStations() {
     return [
         {
@@ -346,17 +387,7 @@ function getSampleStations() {
             parkingSpots: 7,
             maintenanceFrequency: "Annually",
             imageUrl: "https://picsum.photos/id/101/400/300",
-            reviews: [
-                {
-                    reviewId: "REV0001",
-                    userId: "user123",
-                    userName: "John D.",
-                    rating: 4,
-                    comment: "Reliable station with fast charging. Good location near the city center.",
-                    date: "2024-11-15",
-                    verifiedPurchase: true
-                }
-            ]
+            reviews: []
         },
         {
             stationId: "EVS00002",
@@ -422,40 +453,6 @@ function getSampleStations() {
                     rating: 3,
                     comment: "Average charging speed but plenty of parking available.",
                     date: "2024-11-12",
-                    verifiedPurchase: true
-                }
-            ]
-        },
-        {
-            stationId: "EVS00004",
-            location: {
-                address: "123 Main Street",
-                city: "Toronto",
-                country: "Canada",
-                geo: { lat: 43.6510, lng: -79.3470 }
-            },
-            chargerType: "AC Level 1",
-            costPerKWh: 0.35,
-            availabilityHours: "08:00-20:00",
-            distanceToCityKm: 2.1,
-            usageStats: { avgUsersPerDay: 45 },
-            stationOperator: "ChargePoint",
-            chargingCapacityKW: 150,
-            connectorTypes: ["Type 1", "Type 2"],
-            installationYear: 2020,
-            usesRenewableEnergy: true,
-            rating: 4.5,
-            parkingSpots: 4,
-            maintenanceFrequency: "Monthly",
-            imageUrl: "https://picsum.photos/id/104/400/300",
-            reviews: [
-                {
-                    reviewId: "REV0004",
-                    userId: "user445",
-                    userName: "Mike T.",
-                    rating: 5,
-                    comment: "Excellent station with fast charging and great location!",
-                    date: "2024-11-10",
                     verifiedPurchase: true
                 }
             ]

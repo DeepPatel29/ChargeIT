@@ -1,0 +1,60 @@
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-edit me-2"></i>Write a Review</h4>
+            </div>
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <h5>{{station.location.city}} Charging Station</h5>
+                    <p class="text-muted">{{station.location.address}}</p>
+                </div>
+
+                {{#if error}}
+                    <div class="alert alert-danger">{{error}}</div>
+                {{/if}}
+
+                <form action="/stations/{{station.stationId}}/review" method="POST">
+                    <!-- Rating Input -->
+                    <div class="mb-4 text-center">
+                        <label class="form-label d-block fw-bold">Select Rating</label>
+                        <div class="rating-select d-inline-block">
+                            <!-- Simple radio buttons for stars logic -->
+                            <div class="btn-group" role="group" aria-label="Rating">
+                                <input type="radio" class="btn-check" name="rating" id="rating1" value="1" required>
+                                <label class="btn btn-outline-warning" for="rating1" title="1 Star"><i class="fas fa-star"></i></label>
+
+                                <input type="radio" class="btn-check" name="rating" id="rating2" value="2">
+                                <label class="btn btn-outline-warning" for="rating2" title="2 Stars"><i class="fas fa-star"></i></label>
+
+                                <input type="radio" class="btn-check" name="rating" id="rating3" value="3">
+                                <label class="btn btn-outline-warning" for="rating3" title="3 Stars"><i class="fas fa-star"></i></label>
+
+                                <input type="radio" class="btn-check" name="rating" id="rating4" value="4">
+                                <label class="btn btn-outline-warning" for="rating4" title="4 Stars"><i class="fas fa-star"></i></label>
+
+                                <input type="radio" class="btn-check" name="rating" id="rating5" value="5">
+                                <label class="btn btn-outline-warning" for="rating5" title="5 Stars"><i class="fas fa-star"></i></label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Comment Input -->
+                    <div class="mb-3">
+                        <label for="comment" class="form-label fw-bold">Your Review</label>
+                        <textarea class="form-control" id="comment" name="comment" rows="5" 
+                                  placeholder="Share your experience with this charging station..." required 
+                                  maxlength="500"></textarea>
+                        <div class="form-text">Maximum 500 characters.</div>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg">Submit Review</button>
+                        <a href="/stations/{{station.stationId}}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

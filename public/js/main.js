@@ -75,19 +75,15 @@ document.addEventListener('DOMContentLoaded', function () {
             if (result.success) {
                 const icon = button.querySelector('i');
                 if (result.isFavorite) {
-                    icon.className = 'fas fa-heart text-danger';
-                    button.setAttribute('data-bs-title', 'Remove from favorites');
+                    icon.className = 'fas fa-heart text-danger me-1';
+                    // Optional: Update text if needed
                 } else {
-                    icon.className = 'far fa-heart';
-                    button.setAttribute('data-bs-title', 'Add to favorites');
+                    icon.className = 'far fa-heart me-1';
                 }
-
-                // Update tooltip
-                const tooltip = bootstrap.Tooltip.getInstance(button);
-                if (tooltip) {
-                    tooltip.hide();
-                    tooltip.dispose();
-                    new bootstrap.Tooltip(button);
+            } else {
+                console.error('Failed to toggle favorite:', result.message);
+                if (result.message === 'Unauthorized') {
+                    window.location.href = '/auth/login';
                 }
             }
         } catch (error) {

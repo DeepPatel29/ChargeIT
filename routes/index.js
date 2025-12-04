@@ -1,5 +1,6 @@
 const express = require('express');
 const Station = require('../models/Station');
+const User = require('../models/User'); // Required to fetch user favorites
 const router = express.Router();
 
 // Home page
@@ -16,7 +17,6 @@ router.get('/', async (req, res) => {
         if (req.app.locals.dbConnected && req.app.locals.dbConnected()) {
             try {
                 console.log('Attempting to fetch data from database...');
-                // Try to get data from database
                 featuredStations = await Station.find()
                     .sort({ rating: -1 })
                     .limit(6)
@@ -25,23 +25,19 @@ router.get('/', async (req, res) => {
                 totalStations = await Station.countDocuments();
                 const countriesList = await Station.distinct('location.country');
                 countries = countriesList ? countriesList.length : 0;
-
-                console.log(`✅ Loaded ${featuredStations.length} stations from database`);
             } catch (dbError) {
                 console.error('Database query error:', dbError.message);
                 dbError = true;
-                // Fall back to sample data
                 featuredStations = getSampleStations();
                 totalStations = featuredStations.length;
-                countries = new Set(featuredStations.map(s => s.location.country)).size;
+                countries = 3;
             }
         } else {
-            // Use sample data when database is not connected
             console.log('Database not connected, using sample data');
             dbError = true;
             featuredStations = getSampleStations();
             totalStations = featuredStations.length;
-            countries = new Set(featuredStations.map(s => s.location.country)).size;
+            countries = 3;
         }
 
         res.render('home', {
@@ -53,27 +49,96 @@ router.get('/', async (req, res) => {
         });
     } catch (error) {
         console.error('Home page error:', error);
-        // Final fallback - always render something
         res.render('home', {
             title: 'ChargeIT - EV Charging Station Locator',
             featuredStations: getSampleStations(),
             totalStations: 5,
             countries: 3,
-            dbError: true,
-            error: error.message
+            dbError: true
         });
     }
 });
 
 // About page
 router.get('/about', (req, res) => {
-    console.log('About page accessed');
     res.render('about', {
         title: 'About ChargeIT'
     });
 });
 
-// Enhanced sample data for when DB is not available
+// NEW: Favorites Page Route
+router.get('/favorites', async (req, res) => {
+    // 1. Check if user is logged in
+    if (!req.session.user) {
+        return res.redirect('/auth/login');
+    }
+
+    try {
+        let stations = [];
+        let dbError = false;
+
+        // 2. Fetch User and populate their favoriteStations
+        if (req.app.locals.dbConnected && req.app.locals.dbConnected()) {
+            const user = await User.findById(req.session.user.id)
+                .populate('favoriteStations') // This replaces IDs with actual Station data
+                .lean();
+            
+            if (user) {
+                stations = user.favoriteStations;
+            }
+        } else {
+            dbError = true; // Favorites require DB connection
+        }
+
+        res.render('favorites', {
+            title: 'My Favorite Stations - ChargeIT',
+            stations,
+            dbError
+        });
+    } catch (error) {
+        console.error('Favorites page error:', error);
+        res.render('error', { message: 'Error loading favorites' });
+    }
+});
+
+// NEW: API Route to Add/Remove Favorites
+router.post('/api/favorites', async (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const { stationId } = req.body;
+
+    try {
+        const user = await User.findById(req.session.user.id);
+        const station = await Station.findOne({ stationId: stationId });
+
+        if (!user || !station) {
+            return res.status(404).json({ success: false, message: 'Not found' });
+        }
+
+        // Check if already in favorites (convert ObjectIds to strings for comparison)
+        const index = user.favoriteStations.findIndex(id => id.toString() === station._id.toString());
+        let isFavorite = false;
+
+        if (index === -1) {
+            user.favoriteStations.push(station._id); // Add
+            isFavorite = true;
+        } else {
+            user.favoriteStations.splice(index, 1); // Remove
+            isFavorite = false;
+        }
+
+        await user.save();
+        res.json({ success: true, isFavorite });
+
+    } catch (error) {
+        console.error('Favorites API error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Sample data function
 function getSampleStations() {
     return [
         {
@@ -98,85 +163,7 @@ function getSampleStations() {
             parkingSpots: 7,
             maintenanceFrequency: "Annually",
             imageUrl: "https://picsum.photos/id/101/400/300",
-            reviews: [
-                {
-                    reviewId: "REV0001",
-                    userId: "user123",
-                    userName: "John D.",
-                    rating: 4,
-                    comment: "Reliable station with fast charging. Good location near the city center.",
-                    date: "2024-11-15",
-                    verifiedPurchase: true
-                }
-            ]
-        },
-        {
-            stationId: "EVS00002",
-            location: {
-                address: "8970 San Francisco Ave",
-                city: "San Francisco",
-                country: "USA",
-                geo: { lat: 37.861857, lng: -122.490299 }
-            },
-            chargerType: "DC Fast Charger",
-            costPerKWh: 0.19,
-            availabilityHours: "24/7",
-            distanceToCityKm: 4.96,
-            usageStats: { avgUsersPerDay: 83 },
-            stationOperator: "EVgo",
-            chargingCapacityKW: 350,
-            connectorTypes: ["Tesla", "Type 2"],
-            installationYear: 2010,
-            usesRenewableEnergy: true,
-            rating: 3.9,
-            parkingSpots: 2,
-            maintenanceFrequency: "Monthly",
-            imageUrl: "https://picsum.photos/id/102/400/300",
-            reviews: [
-                {
-                    reviewId: "REV0002",
-                    userId: "user234",
-                    userName: "Lisa R.",
-                    rating: 4,
-                    comment: "24/7 availability saved me during a late-night trip! Very convenient.",
-                    date: "2024-11-14",
-                    verifiedPurchase: true
-                }
-            ]
-        },
-        {
-            stationId: "EVS00003",
-            location: {
-                address: "5974 Bangkok Ave",
-                city: "Bangkok",
-                country: "Thailand",
-                geo: { lat: 13.776092, lng: 100.412776 }
-            },
-            chargerType: "AC Level 2",
-            costPerKWh: 0.48,
-            availabilityHours: "06:00-22:00",
-            distanceToCityKm: 8.54,
-            usageStats: { avgUsersPerDay: 24 },
-            stationOperator: "ChargePoint",
-            chargingCapacityKW: 50,
-            connectorTypes: ["Type 2", "CCS"],
-            installationYear: 2019,
-            usesRenewableEnergy: false,
-            rating: 3.6,
-            parkingSpots: 9,
-            maintenanceFrequency: "Annually",
-            imageUrl: "https://picsum.photos/id/103/400/300",
-            reviews: [
-                {
-                    reviewId: "REV0003",
-                    userId: "user334",
-                    userName: "Chiang M.",
-                    rating: 3,
-                    comment: "Average charging speed but plenty of parking available.",
-                    date: "2024-11-12",
-                    verifiedPurchase: true
-                }
-            ]
+            reviews: []
         }
     ];
 }

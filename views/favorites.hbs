@@ -1,0 +1,56 @@
+<div class="row mb-4">
+    <div class="col-md-12">
+        <h2><i class="fas fa-heart text-danger me-2"></i>My Favorite Stations</h2>
+        <p class="text-muted">Manage your saved charging locations.</p>
+    </div>
+</div>
+
+{{#if dbError}}
+<div class="alert alert-warning">
+    <i class="fas fa-exclamation-triangle me-2"></i>
+    Database connection is currently unavailable. Favorites cannot be loaded.
+</div>
+{{else}}
+
+    {{#if stations.length}}
+    <div class="row">
+        {{#each stations}}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100 shadow-sm">
+                <img src="{{this.imageUrl}}" class="card-img-top" alt="{{this.location.city}}" style="height: 200px; object-fit: cover;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <h5 class="card-title mb-0">{{this.location.city}}</h5>
+                        <span class="badge bg-primary">{{this.chargerType}}</span>
+                    </div>
+                    <p class="card-text text-muted small">
+                        <i class="fas fa-map-marker-alt me-1"></i> {{this.location.address}}
+                    </p>
+                    <div class="d-flex justify-content-between mb-3">
+                        <small><i class="fas fa-bolt text-warning"></i> {{this.chargingCapacityKW}} kW</small>
+                        <small><i class="fas fa-dollar-sign text-success"></i> {{this.costPerKWh}}/kWh</small>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <a href="/stations/{{this.stationId}}" class="btn btn-outline-primary btn-sm">
+                            View Details
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {{/each}}
+    </div>
+    {{else}}
+    <div class="text-center py-5">
+        <div class="mb-3">
+            <i class="far fa-heart fa-4x text-muted"></i>
+        </div>
+        <h4>No Favorites Yet</h4>
+        <p class="text-muted">Start exploring stations and save them here for quick access!</p>
+        <a href="/stations" class="btn btn-primary mt-2">
+            Browse Stations
+        </a>
+    </div>
+    {{/if}}
+
+{{/if}}
