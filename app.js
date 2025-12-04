@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const session = require('express-session');
-// const MongoStore = require('connect-mongo'); // DISABLED TO PREVENT CRASH
+const MongoStore = require('connect-mongo'); // Import Connect Mongo
 const { engine } = require('express-handlebars');
 const path = require('path');
 require('dotenv').config();
@@ -9,7 +9,6 @@ require('dotenv').config();
 const app = express();
 
 // --- Trust Proxy (Required for Vercel/Render) ---
-// This ensures cookies work correctly behind their load balancers
 app.set('trust proxy', 1);
 
 // Database connection
@@ -18,7 +17,6 @@ const connectDB = require('./config/database');
 let dbConnected = false;
 console.log('🔄 Initializing database connection...');
 
-// "Fire and Forget" connection to prevent app crash if DB is slow
 connectDB().then(conn => {
     if (conn) {
         dbConnected = true;
@@ -78,21 +76,46 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- EMERGENCY SESSION SETUP (Memory Store) ---
-// This is stable but will log users out if the server restarts.
-// We use this to fix the 500 error on Vercel immediately.
+// --- SESSION CONFIGURATION ---
+let sessionStore;
+// Check if we are in production (Vercel) or development (Local)
+const isProduction = process.env.NODE_ENV === 'production';
+
+if (process.env.MONGO_URI) {
+    try {
+        sessionStore = MongoStore.create({
+            mongoUrl: process.env.MONGO_URI,
+            collectionName: 'sessions',
+            ttl: 24 * 60 * 60, 
+            autoRemove: 'native' 
+        });
+        console.log("✅ Session Store: MongoDB");
+    } catch (err) {
+        console.error("⚠️ Failed to init MongoStore:", err.message);
+        sessionStore = new session.MemoryStore();
+        console.log("⚠️ Session Store: Memory (Fallback)");
+    }
+} else {
+    console.warn("⚠️ MONGO_URI not found. Using MemoryStore.");
+    sessionStore = new session.MemoryStore();
+}
+
 app.use(session({
     secret: process.env.SESSION_SECRET || 'chargeit-fallback-secret-key',
     resave: false,
     saveUninitialized: false,
-    // store: MongoStore.create(...), // REMOVED to fix crash
+    store: sessionStore,
     cookie: {
-        secure: process.env.NODE_ENV === 'production', // true on Vercel (HTTPS)
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        // Secure is TRUE only if we are strictly in production AND not localhost
+        secure: isProduction, 
+        maxAge: 24 * 60 * 60 * 1000, 
         httpOnly: true,
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+        // 'lax' allows logging in on http://localhost
+        sameSite: isProduction ? 'none' : 'lax'
     }
 }));
+
+console.log(`ℹ️  Cookie Settings -> Secure: ${isProduction}, SameSite: ${isProduction ? 'none' : 'lax'}`);
 
 app.use((req, res, next) => {
     res.locals.user = req.session.user || null;
