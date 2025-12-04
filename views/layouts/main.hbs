@@ -8,8 +8,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="/css/style.css" rel="stylesheet">
 </head>
-<body>
-    <!-- Navigation -->
+<body class="d-flex flex-column min-vh-100">
     <nav class="navbar navbar-expand-lg navbar-dark bg-success">
         <div class="container">
             <a class="navbar-brand" href="/">
@@ -30,7 +29,6 @@
                     <li class="nav-item">
                         <a class="nav-link" href="/stations/search">Search</a>
                     </li>
-                    <!-- ADMIN LINK: Only visible to admins -->
                     {{#if user.isAdmin}}
                     <li class="nav-item">
                         <a class="nav-link fw-bold text-warning" href="/admin">
@@ -68,12 +66,11 @@
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <main class="container mt-4">
+    {{!-- flex-grow-1 ensures this section expands to fill available space, pushing footer down --}}
+    <main class="container mt-4 flex-grow-1">
         {{{body}}}
     </main>
 
-    <!-- Footer -->
     <footer class="bg-dark text-light mt-5 py-4">
         <div class="container">
             <div class="row">

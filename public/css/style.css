@@ -153,3 +153,23 @@ body {
     background-color: #cff4fc;
     color: #055160;
 }
+
+/* --- Large Screen Fixes --- */
+/* For 27-inch monitors and larger (approx 2560px width) */
+@media (min-width: 1600px) {
+    .container {
+        /* Prevents content from stretching too wide on huge screens */
+        max-width: 1320px !important; 
+    }
+}
+
+/* Ensure sticky footer behavior even if Bootstrap classes fail */
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1 0 auto;
+}
