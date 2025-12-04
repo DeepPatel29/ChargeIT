@@ -2,34 +2,39 @@ const admin = require("firebase-admin");
 const path = require("path");
 const fs = require("fs");
 
-// Define possible paths for the secret file
-// 1. Local Development: Inside the 'config' folder
-const localPath = path.join(__dirname, 'firebase-service-account.json');
-// 2. Render Deployment: At the root of the application (one level up from config)
-const rootPath = path.join(__dirname, '..', 'firebase-service-account.json');
-
 let serviceAccount;
 
 try {
-    if (fs.existsSync(localPath)) {
-        console.log("Loading Firebase credentials from config folder...");
-        serviceAccount = require(localPath);
-    } else if (fs.existsSync(rootPath)) {
-        console.log("Loading Firebase credentials from root folder...");
-        serviceAccount = require(rootPath);
-    } else {
-        throw new Error("firebase-service-account.json not found in config or root directory.");
+    // 1. VERCEL / PRODUCTION: Check for Environment Variable first
+    // We will paste the raw JSON content into this variable in Vercel settings
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+        // console.log("Loading Firebase credentials from Environment Variable...");
+        serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    } 
+    // 2. LOCAL / RENDER: Check for physical file
+    else {
+        const localPath = path.join(__dirname, 'firebase-service-account.json');
+        const rootPath = path.join(__dirname, '..', 'firebase-service-account.json');
+
+        if (fs.existsSync(localPath)) {
+            serviceAccount = require(localPath);
+        } else if (fs.existsSync(rootPath)) {
+            serviceAccount = require(rootPath);
+        } else {
+            throw new Error("No Firebase credentials found (Env Var or File).");
+        }
     }
 
-    admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
-    });
-    
-    console.log("✅ Firebase Admin Initialized");
+    // Initialize Firebase
+    if (!admin.apps.length) {
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount)
+        });
+        console.log("✅ Firebase Admin Initialized");
+    }
 
 } catch (error) {
     console.error("❌ Firebase Initialization Error:", error.message);
-    // We don't crash the app, but Google Login won't work
 }
 
 module.exports = admin;
