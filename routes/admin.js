@@ -40,11 +40,29 @@ router.get('/', async (req, res) => {
 
 // --- USERS MANAGEMENT ---
 
-// List Users
+// List Users with Search
 router.get('/users', async (req, res) => {
     try {
-        const users = await User.find().sort({ createdAt: -1 }).lean();
-        res.render('admin/users', { title: 'Manage Users', users });
+        const searchQuery = req.query.search;
+        let query = {};
+
+        // If search term exists, search by username or email
+        if (searchQuery) {
+            query = {
+                $or: [
+                    { username: { $regex: searchQuery, $options: 'i' } },
+                    { email: { $regex: searchQuery, $options: 'i' } }
+                ]
+            };
+        }
+
+        const users = await User.find(query).sort({ createdAt: -1 }).lean();
+        
+        res.render('admin/users', { 
+            title: 'Manage Users', 
+            users,
+            searchQuery // Pass back to view to keep input populated
+        });
     } catch (error) {
         res.render('error', { message: 'Error fetching users' });
     }
@@ -60,7 +78,6 @@ router.post('/users/add', async (req, res) => {
     try {
         const { username, email, password, isAdmin } = req.body;
 
-        // Check for existing user
         const existingUser = await User.findOne({ $or: [{ email }, { username }] });
         if (existingUser) {
             return res.render('admin/user-form', { 
@@ -73,8 +90,8 @@ router.post('/users/add', async (req, res) => {
         const newUser = new User({
             username,
             email,
-            password, // Model pre-save hook will hash this
-            isAdmin: isAdmin === 'on' // Checkbox returns 'on' if checked
+            password,
+            isAdmin: isAdmin === 'on'
         });
 
         await newUser.save();
@@ -115,12 +132,62 @@ router.post('/users/delete/:id', async (req, res) => {
 
 // --- STATIONS MANAGEMENT ---
 
-// List Stations
+// List Stations with Search, Filter & Pagination
 router.get('/stations', async (req, res) => {
     try {
-        const stations = await Station.find().sort({ stationId: 1 }).lean();
-        res.render('admin/stations', { title: 'Manage Stations', stations });
+        const searchQuery = req.query.search || '';
+        const filterType = req.query.type || '';
+        const page = parseInt(req.query.page) || 1;
+        const limit = 20; // Stations per page
+        const skip = (page - 1) * limit;
+
+        let query = {};
+
+        // 1. Build Search Query
+        if (searchQuery) {
+            query.$or = [
+                { stationId: { $regex: searchQuery, $options: 'i' } },
+                { 'location.city': { $regex: searchQuery, $options: 'i' } },
+                { stationOperator: { $regex: searchQuery, $options: 'i' } }
+            ];
+        }
+
+        // 2. Build Filter Query
+        if (filterType) {
+            query.chargerType = filterType;
+        }
+
+        // 3. Fetch Data with Pagination
+        const totalStations = await Station.countDocuments(query);
+        const stations = await Station.find(query)
+            .sort({ stationId: 1 })
+            .skip(skip)
+            .limit(limit)
+            .lean();
+        
+        const totalPages = Math.ceil(totalStations / limit);
+
+        // 4. Create Pagination Query String (keeps search/filter active on page change)
+        let paginationParams = [];
+        if (searchQuery) paginationParams.push(`search=${encodeURIComponent(searchQuery)}`);
+        if (filterType) paginationParams.push(`type=${encodeURIComponent(filterType)}`);
+        const paginationQuery = paginationParams.length > 0 ? '&' + paginationParams.join('&') : '';
+
+        // Charger Types Enum (matching Station model)
+        const chargerTypes = ['AC Level 1', 'AC Level 2', 'DC Fast Charger', 'Tesla Supercharger'];
+
+        res.render('admin/stations', { 
+            title: 'Manage Stations', 
+            stations,
+            searchQuery,
+            filterType,
+            chargerTypes,
+            currentPage: page,
+            totalPages,
+            paginationQuery
+        });
     } catch (error) {
+        console.error(error);
         res.render('error', { message: 'Error fetching stations' });
     }
 });
@@ -152,7 +219,6 @@ router.post('/stations/add', async (req, res) => {
             chargerType,
             costPerKWh: parseFloat(costPerKWh),
             stationOperator,
-            // Default values
             availabilityHours: "24/7",
             distanceToCityKm: 5,
             usageStats: { avgUsersPerDay: 0 },

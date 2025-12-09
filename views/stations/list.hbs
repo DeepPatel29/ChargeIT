@@ -5,7 +5,6 @@
     </a>
 </div>
 
-<!-- Stats -->
 <div class="row mb-4">
     <div class="col-12">
         <div class="alert alert-info">
@@ -15,7 +14,6 @@
     </div>
 </div>
 
-<!-- Stations Grid -->
 <div class="row g-4">
     {{#each stations}}
     <div class="col-md-6 col-lg-4">
@@ -79,27 +77,38 @@
     {{/each}}
 </div>
 
-<!-- Pagination -->
 {{#if (gt totalPages 1)}}
 <nav class="mt-5">
     <ul class="pagination justify-content-center">
-        {{#if (gt currentPage 1)}}
-            <li class="page-item">
-                <a class="page-link" href="?page={{subtract currentPage 1}}">Previous</a>
-            </li>
-        {{/if}}
         
-        {{#times totalPages}}
+        <li class="page-item {{#eq currentPage 1}}disabled{{/eq}}">
+            <a class="page-link" href="?page={{subtract currentPage 1}}">Previous</a>
+        </li>
+        
+        {{#if showFirst}}
+            <li class="page-item">
+                <a class="page-link" href="?page=1">1</a>
+            </li>
+            <li class="page-item disabled"><span class="page-link">...</span></li>
+        {{/if}}
+
+        {{#each pages}}
             <li class="page-item {{#eq this ../currentPage}}active{{/eq}}">
                 <a class="page-link" href="?page={{this}}">{{this}}</a>
             </li>
-        {{/times}}
+        {{/each}}
         
-        {{#if (lt currentPage totalPages)}}
+        {{#if showLast}}
+            <li class="page-item disabled"><span class="page-link">...</span></li>
             <li class="page-item">
-                <a class="page-link" href="?page={{add currentPage 1}}">Next</a>
+                <a class="page-link" href="?page={{totalPages}}">{{totalPages}}</a>
             </li>
         {{/if}}
+
+        <li class="page-item {{#eq currentPage totalPages}}disabled{{/eq}}">
+            <a class="page-link" href="?page={{add currentPage 1}}">Next</a>
+        </li>
+
     </ul>
 </nav>
 {{/if}}

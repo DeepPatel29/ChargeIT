@@ -38,11 +38,34 @@ router.get('/', async (req, res) => {
 
         const totalPages = Math.ceil(totalStations / perPage);
 
+        // --- NEW PAGINATION LOGIC START ---
+        // Calculate a sliding window of pages (e.g., show 5 pages around current)
+        let startPage = Math.max(1, page - 2);
+        let endPage = Math.min(totalPages, page + 2);
+
+        // Ensure we always show at least 5 pages if available
+        if (endPage - startPage < 4) {
+            if (startPage === 1) {
+                endPage = Math.min(totalPages, startPage + 4);
+            } else if (endPage === totalPages) {
+                startPage = Math.max(1, endPage - 4);
+            }
+        }
+
+        let pages = [];
+        for (let i = startPage; i <= endPage; i++) {
+            pages.push(i);
+        }
+        // --- NEW PAGINATION LOGIC END ---
+
         res.render('stations/list', {
             title: 'All Charging Stations - ChargeIT',
             stations,
             currentPage: page,
             totalPages,
+            pages, // Pass the calculated array of page numbers
+            showFirst: startPage > 1, // Flag to show "1 ..."
+            showLast: endPage < totalPages, // Flag to show "... 100"
             perPage,
             totalStations,
             dbError
@@ -53,6 +76,7 @@ router.get('/', async (req, res) => {
             stations: getSampleStations().slice(0, 12),
             currentPage: 1,
             totalPages: 1,
+            pages: [1],
             perPage: 12,
             totalStations: 3,
             dbError: true,
@@ -285,6 +309,7 @@ router.get('/city/:city', async (req, res) => {
             stations,
             currentPage: 1,
             totalPages: 1,
+            pages: [1],
             perPage: stations.length,
             totalStations: stations.length,
             dbError
@@ -295,6 +320,7 @@ router.get('/city/:city', async (req, res) => {
             stations: [],
             currentPage: 1,
             totalPages: 1,
+            pages: [1],
             perPage: 0,
             totalStations: 0,
             dbError: true,

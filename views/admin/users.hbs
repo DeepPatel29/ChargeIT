@@ -1,10 +1,24 @@
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <h2><i class="fas fa-users me-2"></i>Manage Users</h2>
-    <div>
-        <a href="/admin/users/add" class="btn btn-success me-2">
-            <i class="fas fa-user-plus me-2"></i>Add New User
+    
+    <div class="d-flex align-items-center gap-2">
+        {{!-- Search Form --}}
+        <form action="/admin/users" method="GET" class="d-flex">
+            <input class="form-control me-2" type="search" name="search" placeholder="Username or Email..." value="{{searchQuery}}" aria-label="Search">
+            <button class="btn btn-outline-success" type="submit">
+                <i class="fas fa-search"></i>
+            </button>
+            {{#if searchQuery}}
+                <a href="/admin/users" class="btn btn-outline-secondary ms-2" title="Clear Search">
+                    <i class="fas fa-times"></i>
+                </a>
+            {{/if}}
+        </form>
+
+        <a href="/admin/users/add" class="btn btn-success text-nowrap">
+            <i class="fas fa-user-plus me-2"></i>Add User
         </a>
-        <a href="/admin" class="btn btn-secondary">Back to Dashboard</a>
+        <a href="/admin" class="btn btn-secondary text-nowrap">Back</a>
     </div>
 </div>
 
@@ -22,39 +36,45 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {{#each users}}
-                    <tr>
-                        <td>{{this.username}}</td>
-                        <td>{{this.email}}</td>
-                        <td>
-                            {{#if this.isAdmin}}
-                                <span class="badge bg-danger">Admin</span>
-                            {{else}}
-                                <span class="badge bg-info">User</span>
-                            {{/if}}
-                        </td>
-                        <td>{{formatDate this.createdAt}}</td>
-                        <td class="text-end">
-                            {{!-- Toggle Role Button --}}
-                            <form action="/admin/users/toggle-role/{{this._id}}" method="POST" class="d-inline">
-                                <button type="submit" class="btn btn-sm {{#if this.isAdmin}}btn-outline-secondary{{else}}btn-outline-primary{{/if}} me-1" 
-                                        title="{{#if this.isAdmin}}Revoke Admin{{else}}Make Admin{{/if}}">
-                                    <i class="fas {{#if this.isAdmin}}fa-user-slash{{else}}fa-user-shield{{/if}}"></i>
-                                </button>
-                            </form>
+                    {{#if users.length}}
+                        {{#each users}}
+                        <tr>
+                            <td>{{this.username}}</td>
+                            <td>{{this.email}}</td>
+                            <td>
+                                {{#if this.isAdmin}}
+                                    <span class="badge bg-danger">Admin</span>
+                                {{else}}
+                                    <span class="badge bg-info">User</span>
+                                {{/if}}
+                            </td>
+                            <td>{{formatDate this.createdAt}}</td>
+                            <td class="text-end">
+                                <form action="/admin/users/toggle-role/{{this._id}}" method="POST" class="d-inline">
+                                    <button type="submit" class="btn btn-sm {{#if this.isAdmin}}btn-outline-secondary{{else}}btn-outline-primary{{/if}} me-1" 
+                                            title="{{#if this.isAdmin}}Revoke Admin{{else}}Make Admin{{/if}}">
+                                        <i class="fas {{#if this.isAdmin}}fa-user-slash{{else}}fa-user-shield{{/if}}"></i>
+                                    </button>
+                                </form>
 
-                            {{!-- Delete Button (Only for non-admins for safety, or you can allow all) --}}
-                            {{#unless this.isAdmin}}
-                            <form action="/admin/users/delete/{{this._id}}" method="POST" class="d-inline" 
-                                  onsubmit="return confirm('Are you sure you want to delete this user?');">
-                                <button type="submit" class="btn btn-sm btn-danger" title="Delete User">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </form>
-                            {{/unless}}
-                        </td>
-                    </tr>
-                    {{/each}}
+                                {{#unless this.isAdmin}}
+                                <form action="/admin/users/delete/{{this._id}}" method="POST" class="d-inline" 
+                                      onsubmit="return confirm('Are you sure you want to delete this user?');">
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Delete User">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                                {{/unless}}
+                            </td>
+                        </tr>
+                        {{/each}}
+                    {{else}}
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">
+                                No users found matching "{{searchQuery}}"
+                            </td>
+                        </tr>
+                    {{/if}}
                 </tbody>
             </table>
         </div>
