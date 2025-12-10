@@ -11,37 +11,71 @@
     <div class="alert alert-success text-center py-5">
         <i class="fas fa-check-circle fa-3x mb-3"></i>
         <h4>All clear!</h4>
-        <p>No stations have reached the {{threshold}}-user suggestion threshold yet.</p>
+        <p>No price suggestions pending review.</p>
     </div>
 {{else}}
     <div class="row">
         {{#each suggestions}}
         <div class="col-md-6 col-lg-4 mb-4">
-            <div class="card shadow-sm border-warning h-100">
-                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+            {{!-- Card Color Logic: Yellow if pending threshold, Greenish if ready --}}
+            <div class="card shadow-sm h-100 {{#if (gte this.userCount ../threshold)}}border-success{{else}}border-warning{{/if}}">
+                
+                <div class="card-header d-flex justify-content-between align-items-center {{#if (gte this.userCount ../threshold)}}bg-success text-white{{else}}bg-warning text-dark{{/if}}">
                     <strong>{{this.stationData.location.city}}</strong>
-                    <span class="badge bg-dark">{{this.userCount}} Suggestions</span>
+                    <span class="badge bg-dark">{{this.userCount}} / {{../threshold}}</span>
                 </div>
+                
                 <div class="card-body">
                     <p class="text-muted small mb-2">ID: {{this.stationDisplayId}}</p>
-                    <p class="mb-1">Current Price: <strong>${{this.stationData.costPerKWh}}</strong></p>
                     
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <span class="d-block text-muted small">Current</span>
+                            <strong>${{toFixed this.stationData.costPerKWh 2}}</strong>
+                        </div>
+                        <div class="text-end">
+                            <span class="d-block text-muted small">Suggested Avg</span>
+                            <strong class="text-primary fs-5">${{toFixed this.avgPrice 2}}</strong>
+                        </div>
+                    </div>
+
+                    {{!-- User Details Dropdown --}}
+                    <div class="mb-3">
+                        <button class="btn btn-sm btn-outline-secondary w-100" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{this._id}}">
+                            <i class="fas fa-list me-1"></i> View Suggesters
+                        </button>
+                        <div class="collapse mt-2" id="collapse{{this._id}}">
+                            <ul class="list-group list-group-flush small">
+                                {{#each this.details}}
+                                <li class="list-group-item px-0">
+                                    <div class="d-flex justify-content-between">
+                                        <strong>{{this.username}}</strong>
+                                        <span class="badge bg-light text-dark border">${{toFixed this.price 2}}</span>
+                                    </div>
+                                    <div class="text-muted" style="font-size: 0.85em;">{{this.email}}</div>
+                                </li>
+                                {{/each}}
+                            </ul>
+                        </div>
+                    </div>
+
                     <hr>
-                    
-                    <h5 class="text-center text-primary mb-3">
-                        Suggested Avg: ${{toFixed this.avgPrice 2}}
-                    </h5>
 
                     {{!-- Action Forms --}}
                     <div class="d-grid gap-2">
                         <form action="/admin/price-suggestions/approve" method="POST">
                             <input type="hidden" name="stationDbId" value="{{this._id}}">
                             <input type="hidden" name="finalPrice" value="{{this.avgPrice}}">
-                            {{!-- Pass the array of IDs so we can mark them all approved --}}
                             <input type="hidden" name="suggestionIds" value="{{json this.suggestionIds}}">
                             
-                            <button type="submit" class="btn btn-success w-100">
-                                <i class="fas fa-check me-2"></i>Approve Change
+                            {{!-- DISABLE BUTTON IF THRESHOLD NOT MET --}}
+                            <button type="submit" class="btn btn-success w-100" {{#if (lt this.userCount ../threshold)}}disabled{{/if}}>
+                                <i class="fas fa-check me-2"></i>
+                                {{#if (gte this.userCount ../threshold)}}
+                                    Approve Change
+                                {{else}}
+                                    Wait for {{subtract ../threshold this.userCount}} more
+                                {{/if}}
                             </button>
                         </form>
 

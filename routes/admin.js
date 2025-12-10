@@ -2,7 +2,19 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Station = require('../models/Station');
-const PriceSuggestion = require('../models/PriceSuggestion'); // Ensure this model exists
+const PriceSuggestion = require('../models/PriceSuggestion'); 
+const nodemailer = require('nodemailer'); // Required for email notifications
+
+// ==========================================
+// EMAIL CONFIGURATION
+// ==========================================
+const transporter = nodemailer.createTransport({
+    service: 'gmail', // Change if using Outlook/Yahoo/etc.
+    auth: {
+        user: process.env.EMAIL_USER, 
+        pass: process.env.EMAIL_PASS 
+    }
+});
 
 // Middleware to check if user is Admin
 const checkAdmin = (req, res, next) => {
@@ -18,15 +30,16 @@ const checkAdmin = (req, res, next) => {
 // Protect all admin routes
 router.use(checkAdmin);
 
-// Admin Dashboard
+// ==========================================
+// 1. ADMIN DASHBOARD
+// ==========================================
 router.get('/', async (req, res) => {
     try {
         const userCount = await User.countDocuments();
         const stationCount = await Station.countDocuments();
-        
-        // Count pending suggestions for dashboard badge
+        // Count pending suggestions for the dashboard badge
         const pendingSuggestions = await PriceSuggestion.countDocuments({ status: 'pending' });
-
+        
         const recentStations = await Station.find().sort({ createdAt: -1 }).limit(5).lean();
         const recentUsers = await User.find().sort({ createdAt: -1 }).limit(5).lean();
 
@@ -44,32 +57,51 @@ router.get('/', async (req, res) => {
     }
 });
 
-// --- PRICE SUGGESTIONS (CROWD CONSENSUS) ---
+// ==========================================
+// 2. PRICE SUGGESTIONS (CROWD CONSENSUS)
+// ==========================================
 
-// GET: View Verified Suggestions (Threshold Logic)
+// GET: View Suggestions
 router.get('/price-suggestions', async (req, res) => {
     try {
-        const threshold = 3; // Minimum users required to trigger admin review
+        const threshold = 3; // Threshold for enabling the "Approve" button
 
         const aggregatedSuggestions = await PriceSuggestion.aggregate([
             // 1. Only look at pending suggestions
             { $match: { status: 'pending' } },
 
-            // 2. Group by Station
+            // 2. JOIN with Users collection to get Email & Username
+            {
+                $lookup: {
+                    from: "users",          // MongoDB collection name for User model
+                    localField: "userId",
+                    foreignField: "_id",
+                    as: "userInfo"
+                }
+            },
+            { $unwind: "$userInfo" },       // Flatten the user array
+
+            // 3. Group by Station
             {
                 $group: {
                     _id: "$stationDbId", 
                     stationDisplayId: { $first: "$stationId" }, 
                     userCount: { $sum: 1 }, 
                     avgPrice: { $avg: "$suggestedPrice" }, 
-                    suggestionIds: { $push: "$_id" } 
+                    // Keep IDs for the "Approve All" logic
+                    suggestionIds: { $push: "$_id" },
+                    // Collect details for the dropdown list
+                    details: { 
+                        $push: {
+                            username: "$userInfo.username",
+                            email: "$userInfo.email",
+                            price: "$suggestedPrice"
+                        }
+                    }
                 }
             },
 
-            // 3. FILTER: Only show if >= threshold users
-            { $match: { userCount: { $gte: threshold } } },
-
-            // 4. Join with Station data for display info
+            // 4. Join with Station data for display info (City, Current Price)
             {
                 $lookup: {
                     from: "stations", 
@@ -80,6 +112,7 @@ router.get('/price-suggestions', async (req, res) => {
             },
             { $unwind: "$stationData" }, 
 
+            // 5. Sort by most requested (high consensus first)
             { $sort: { userCount: -1 } }
         ]);
 
@@ -95,32 +128,83 @@ router.get('/price-suggestions', async (req, res) => {
     }
 });
 
-// POST: Approve (Update Station Price)
+// POST: Approve (Update Station Price & Send Emails)
 router.post('/price-suggestions/approve', async (req, res) => {
     try {
         const { stationDbId, finalPrice, suggestionIds } = req.body;
         const idsArray = JSON.parse(suggestionIds);
 
-        // --- FIX START ---
-        // 1. Parse the price
-        let priceToSave = parseFloat(finalPrice);
-        
-        // 2. Fix precision: Round to 2 decimal places to avoid 0.700000001
-        priceToSave = Math.round((priceToSave + Number.EPSILON) * 100) / 100;
-        // --- FIX END ---
+        // 1. Get Old Price (for email context)
+        const station = await Station.findById(stationDbId);
+        if (!station) throw new Error('Station not found');
+        const oldPrice = station.costPerKWh;
 
-        // Update Station
-        await Station.findByIdAndUpdate(stationDbId, {
-            costPerKWh: priceToSave
-        });
+        // 2. Parse and Round New Price (Fix Floating Point Bug: 0.70000001 -> 0.70)
+        let newPrice = parseFloat(finalPrice);
+        newPrice = Math.round((newPrice + Number.EPSILON) * 100) / 100;
 
-        // Mark suggestions as approved
+        // 3. Update Station in Database
+        station.costPerKWh = newPrice;
+        await station.save();
+
+        // 4. Find the suggestions to email the specific users
+        const approvedSuggestions = await PriceSuggestion.find({ _id: { $in: idsArray } })
+            .populate('userId');
+
+        // 5. Send Email to Each User
+        if (process.env.EMAIL_USER) {
+            approvedSuggestions.forEach(async (suggestion) => {
+                if (suggestion.userId && suggestion.userId.email) {
+                    const mailOptions = {
+                        from: process.env.EMAIL_USER,
+                        to: suggestion.userId.email,
+                        subject: 'ChargeIT: Price Suggestion Approved!',
+                        html: `
+                            <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 5px;">
+                                <h2 style="color: #198754;">Suggestion Approved!</h2>
+                                <p>Hi <strong>${suggestion.userId.username}</strong>,</p>
+                                <p>Thank you for contributing to the ChargeIT community. Your price suggestion for <strong>${station.location.city}</strong> has been verified and approved.</p>
+                                
+                                <table style="width: 100%; max-width: 400px; margin: 20px 0; border-collapse: collapse;">
+                                    <tr style="background-color: #f8f9fa;">
+                                        <td style="padding: 10px; border: 1px solid #ddd;">Previous Price</td>
+                                        <td style="padding: 10px; border: 1px solid #ddd;">$${oldPrice.toFixed(2)}/kWh</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 10px; border: 1px solid #ddd;">Your Suggestion</td>
+                                        <td style="padding: 10px; border: 1px solid #ddd;">$${suggestion.suggestedPrice.toFixed(2)}/kWh</td>
+                                    </tr>
+                                    <tr style="background-color: #d1e7dd; font-weight: bold;">
+                                        <td style="padding: 10px; border: 1px solid #ddd;">New Updated Price</td>
+                                        <td style="padding: 10px; border: 1px solid #ddd;">$${newPrice.toFixed(2)}/kWh</td>
+                                    </tr>
+                                </table>
+
+                                <p>Your input helps keep our data accurate for everyone!</p>
+                                <p style="color: #6c757d; font-size: 0.9em;">Best regards,<br>The ChargeIT Team</p>
+                            </div>
+                        `
+                    };
+
+                    try {
+                        await transporter.sendMail(mailOptions);
+                        console.log(`Email sent to ${suggestion.userId.email}`);
+                    } catch (err) {
+                        console.error('Email error:', err.message);
+                    }
+                }
+            });
+        } else {
+            console.warn('⚠️ No EMAIL_USER in .env - Emails skipped.');
+        }
+
+        // 6. Mark suggestions as approved
         await PriceSuggestion.updateMany(
             { _id: { $in: idsArray } },
             { status: 'approved' }
         );
 
-        // Reject other pending ones for this station
+        // 7. Cleanup other pending suggestions for this station
         await PriceSuggestion.updateMany(
             { stationDbId: stationDbId, status: 'pending' },
             { status: 'rejected' }
@@ -128,7 +212,7 @@ router.post('/price-suggestions/approve', async (req, res) => {
 
         res.redirect('/admin/price-suggestions');
     } catch (error) {
-        console.error(error); // Helpful to log the actual error
+        console.error(error);
         res.render('error', { message: 'Error approving price' });
     }
 });
@@ -150,9 +234,10 @@ router.post('/price-suggestions/reject', async (req, res) => {
     }
 });
 
-// --- USERS MANAGEMENT ---
+// ==========================================
+// 3. USERS MANAGEMENT
+// ==========================================
 
-// List Users with Search
 router.get('/users', async (req, res) => {
     try {
         const searchQuery = req.query.search;
@@ -179,12 +264,10 @@ router.get('/users', async (req, res) => {
     }
 });
 
-// Add User Form
 router.get('/users/add', (req, res) => {
     res.render('admin/user-form', { title: 'Add New User' });
 });
 
-// Process Add User
 router.post('/users/add', async (req, res) => {
     try {
         const { username, email, password, isAdmin } = req.body;
@@ -217,7 +300,6 @@ router.post('/users/add', async (req, res) => {
     }
 });
 
-// Toggle User Admin Role
 router.post('/users/toggle-role/:id', async (req, res) => {
     try {
         const user = await User.findById(req.params.id);
@@ -231,7 +313,6 @@ router.post('/users/toggle-role/:id', async (req, res) => {
     }
 });
 
-// Delete User
 router.post('/users/delete/:id', async (req, res) => {
     try {
         await User.findByIdAndDelete(req.params.id);
@@ -241,20 +322,20 @@ router.post('/users/delete/:id', async (req, res) => {
     }
 });
 
-// --- STATIONS MANAGEMENT ---
+// ==========================================
+// 4. STATIONS MANAGEMENT
+// ==========================================
 
-// List Stations with Search, Filter & Pagination
 router.get('/stations', async (req, res) => {
     try {
         const searchQuery = req.query.search || '';
         const filterType = req.query.type || '';
         const page = parseInt(req.query.page) || 1;
-        const limit = 20; // Stations per page
+        const limit = 20; 
         const skip = (page - 1) * limit;
 
         let query = {};
 
-        // 1. Build Search Query
         if (searchQuery) {
             query.$or = [
                 { stationId: { $regex: searchQuery, $options: 'i' } },
@@ -263,12 +344,10 @@ router.get('/stations', async (req, res) => {
             ];
         }
 
-        // 2. Build Filter Query
         if (filterType) {
             query.chargerType = filterType;
         }
 
-        // 3. Fetch Data with Pagination
         const totalStations = await Station.countDocuments(query);
         const stations = await Station.find(query)
             .sort({ stationId: 1 })
@@ -278,13 +357,11 @@ router.get('/stations', async (req, res) => {
         
         const totalPages = Math.ceil(totalStations / limit);
 
-        // 4. Create Pagination Query String (keeps search/filter active on page change)
         let paginationParams = [];
         if (searchQuery) paginationParams.push(`search=${encodeURIComponent(searchQuery)}`);
         if (filterType) paginationParams.push(`type=${encodeURIComponent(filterType)}`);
         const paginationQuery = paginationParams.length > 0 ? '&' + paginationParams.join('&') : '';
 
-        // Charger Types Enum (matching Station model)
         const chargerTypes = ['AC Level 1', 'AC Level 2', 'DC Fast Charger', 'Tesla Supercharger'];
 
         res.render('admin/stations', { 
@@ -303,12 +380,10 @@ router.get('/stations', async (req, res) => {
     }
 });
 
-// Add Station Form
 router.get('/stations/add', (req, res) => {
     res.render('admin/station-form', { title: 'Add New Station' });
 });
 
-// Process Add Station
 router.post('/stations/add', async (req, res) => {
     try {
         const { 
@@ -355,7 +430,6 @@ router.post('/stations/add', async (req, res) => {
     }
 });
 
-// Edit Station Form
 router.get('/stations/edit/:id', async (req, res) => {
     try {
         const station = await Station.findOne({ _id: req.params.id }).lean();
@@ -366,7 +440,6 @@ router.get('/stations/edit/:id', async (req, res) => {
     }
 });
 
-// Process Edit Station
 router.post('/stations/edit/:id', async (req, res) => {
     try {
         const { 
@@ -392,7 +465,6 @@ router.post('/stations/edit/:id', async (req, res) => {
     }
 });
 
-// Delete Station
 router.post('/stations/delete/:id', async (req, res) => {
     try {
         await Station.findByIdAndDelete(req.params.id);
