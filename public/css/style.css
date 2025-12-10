@@ -21,12 +21,6 @@
     --input-color: #212529;
     --input-border: #ced4da;
     --footer-bg: #212529;
-
-    /* Admin Card Defaults (Light Mode) */
-    --card-header-warning-bg: #ffc107;
-    --card-header-warning-text: #000;
-    --card-header-success-bg: #198754;
-    --card-header-success-text: #fff;
 }
 
 [data-theme="dark"] {
@@ -44,12 +38,6 @@
     --input-color: #e0e0e0;
     --input-border: #404040;
     --footer-bg: #000;
-
-    /* Admin Card Defaults (Dark Mode) */
-    --card-header-warning-bg: #b38600; /* Darker Mustard for readability */
-    --card-header-warning-text: #fff;
-    --card-header-success-bg: #0f5132; /* Darker Green */
-    --card-header-success-text: #fff;
 }
 
 /* --- Global Elements --- */
@@ -91,6 +79,10 @@ body {
 }
 .form-control::placeholder {
     color: #adb5bd;
+}
+
+.form-text{
+    color: var(--body-text);
 }
 
 /* Navbar Overrides */
@@ -179,62 +171,42 @@ body {
     border-color: #146c43;
 }
 
-/* Fix text-muted to be visible in dark mode */
+/* Base text-muted (overridden below for Dark Mode specific needs) */
 .text-muted {
     color: #a0a0a0 !important;
 }
 
-/* --- Dark Mode Overrides for Specific Elements --- */
-[data-theme="dark"] .bg-white {
+/* =========================================
+   DARK MODE OVERRIDES (Consolidated)
+   ========================================= */
+
+/* 1. Force Bootstrap Light Utilities to Dark Backgrounds */
+[data-theme="dark"] .bg-light,
+[data-theme="dark"] .bg-white,
+[data-theme="dark"] .table-light {
     background-color: var(--card-bg) !important;
     color: var(--body-text) !important;
+    border-color: var(--card-border) !important;
 }
 
-[data-theme="dark"] .card-header {
-    border-bottom-color: var(--card-border);
+/* 2. Card Headers & Footers */
+[data-theme="dark"] .card-header,
+[data-theme="dark"] .card-footer {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border-color: var(--card-border);
 }
 
-[data-theme="dark"] .btn-outline-dark {
-    color: #e0e0e0;
-    border-color: #e0e0e0;
-}
-
-[data-theme="dark"] .btn-outline-dark:hover {
-    background-color: #e0e0e0;
-    color: #000;
-}
-
-/* Make text-muted lighter in dark mode */
-[data-theme="dark"] .text-muted {
-    color: #b0b0b0 !important;
-}
-
-/* Fix Bootstrap Utilities for Dark Mode */
-[data-theme="dark"] .bg-light {
-    background-color: #2d2d2d !important;
-    color: var(--body-text) !important;
-}
-
-/* Admin Tables Fix */
+/* 3. Table Fixes for Admin Panel */
 [data-theme="dark"] .table {
     color: var(--body-text);
     border-color: var(--card-border);
 }
-[data-theme="dark"] .table-light {
-    background-color: #2d2d2d;
+[data-theme="dark"] .table > :not(caption) > * > * {
+    background-color: transparent; /* Removes white bg from rows/cells */
     color: var(--body-text);
-}
-[data-theme="dark"] .table-light th {
-    background-color: #2d2d2d;
-    color: var(--body-text);
-    border-color: var(--card-border);
-}
-[data-theme="dark"] .table-hover tbody tr:hover {
-    color: var(--body-text);
-    background-color: #2d2d2d;
 }
 
-/* List Groups Fix (Admin & Details) */
+/* 4. List Groups (Admin Lists) */
 [data-theme="dark"] .list-group-item {
     background-color: var(--card-bg);
     color: var(--body-text);
@@ -245,25 +217,34 @@ body {
     color: var(--body-text);
 }
 
-/* --- Admin Panel Dynamic Card Headers --- */
-.card-header-warning {
-    background-color: var(--card-header-warning-bg) !important;
-    color: var(--card-header-warning-text) !important;
+/* 5. Button Overrides (e.g. Google Login) */
+[data-theme="dark"] .btn-outline-dark {
+    color: #e0e0e0;
+    border-color: #e0e0e0;
 }
-.card-header-success {
-    background-color: var(--card-header-success-bg) !important;
-    color: var(--card-header-success-text) !important;
+[data-theme="dark"] .btn-outline-dark:hover {
+    background-color: #e0e0e0;
+    color: #000;
 }
 
-/* Fix Badges in Dark Mode */
-[data-theme="dark"] .badge.bg-light {
-    background-color: #333 !important;
-    color: #fff !important;
-    border: 1px solid #555 !important;
+/* 6. Visibility tweaks */
+[data-theme="dark"] .text-muted {
+    color: #b0b0b0 !important;
 }
-[data-theme="dark"] .badge.bg-dark {
-    background-color: #000 !important;
-    border: 1px solid #333;
+
+/* 7. Modal Fixes (For Suggest Price Modal) */
+[data-theme="dark"] .modal-content {
+    background-color: var(--card-bg);
+    color: var(--body-text);
+    border-color: var(--card-border);
+}
+[data-theme="dark"] .modal-header,
+[data-theme="dark"] .modal-footer {
+    border-color: var(--card-border);
+}
+[data-theme="dark"] .btn-close {
+    /* Filters the default dark 'x' icon to white */
+    filter: invert(1);
 }
 
 /* --- Toggle Switch Styles --- */
@@ -280,32 +261,6 @@ body {
 .theme-switch input {
     display: none;
 }
-
-/* --- Breadcrumb Styling (Fix Blue Links) --- */
-.breadcrumb-item a {
-    color: var(--body-text) !important; /* Uses your theme text color (Black in Light, White in Dark) */
-    text-decoration: none;
-    opacity: 0.7; /* Make previous links slightly muted */
-    transition: all 0.2s ease;
-}
-
-.breadcrumb-item a:hover {
-    color: var(--primary-color) !important; /* Turn ChargeIT Green on hover */
-    opacity: 1;
-    text-decoration: underline;
-}
-
-.breadcrumb-item.active {
-    color: var(--body-text) !important; /* The current page is fully visible */
-    opacity: 1;
-    font-weight: 500;
-}
-
-/* Fix the divider slash (/) color in Dark Mode */
-[data-theme="dark"] .breadcrumb-item + .breadcrumb-item::before {
-    color: #a0a0a0; /* Light Grey divider */
-}
-
 .slider {
     background-color: rgba(255,255,255,0.4);
     bottom: 0;

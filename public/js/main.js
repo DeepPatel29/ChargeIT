@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // ==========================================
     const priceForm = document.getElementById('priceForm');
     if (priceForm) {
-        priceForm.addEventListener('submit', async function(e) {
+        priceForm.addEventListener('submit', async function (e) {
             e.preventDefault();
             const formData = new FormData(this);
             const data = Object.fromEntries(formData.entries());
@@ -100,18 +100,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
 
                 const result = await res.json();
-                
+
                 // Hide Modal using Bootstrap API
                 const modalEl = document.getElementById('priceModal');
                 const modal = bootstrap.Modal.getInstance(modalEl);
                 if (modal) modal.hide();
 
-                if(result.success) {
+                if (result.success) {
                     alert(result.message);
                 } else {
                     alert('Error: ' + result.message);
                 }
-            } catch(err) {
+            } catch (err) {
                 console.error(err);
                 alert('Failed to send suggestion.');
             }
