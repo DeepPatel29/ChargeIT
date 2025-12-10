@@ -1,6 +1,3 @@
-Here is the `README.md` content for your **ChargeIT** project. You can copy this directly into a file named `README.md` in your project root.
-
-````markdown
 # ⚡ ChargeIT
 
 **ChargeIT** is a global Electric Vehicle (EV) charging station locator built with Node.js, Express, and MongoDB. It allows users to search for charging stations, view detailed amenities, leave reviews, and manage their favorite spots. It also features a robust Admin Dashboard for content management.
@@ -43,7 +40,6 @@ Here is the `README.md` content for your **ChargeIT** project. You can copy this
 ```bash
 git clone [https://github.com/yourusername/chargeit.git](https://github.com/yourusername/chargeit.git)
 cd chargeit
-````
 
 ### 2\. Install Dependencies
 
