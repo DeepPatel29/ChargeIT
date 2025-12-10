@@ -1,15 +1,17 @@
-<!-- Hero Section -->
 <section class="hero-section bg-primary text-white py-5 rounded mb-4">
     <div class="container text-center">
         <h1 class="display-4 fw-bold mb-3">
             <i class="fas fa-charging-station me-3"></i>
-            Find EV Charging Stations Worldwide
+            Your Drive, Empowered.
         </h1>
-        <p class="lead mb-4">Discover, compare, and navigate to the best electric vehicle charging stations near you.</p>
+        <p class="lead mb-4 mx-auto" style="max-width: 800px;">
+            ChargeIT removes the guesswork. We provide the clarity and control to discover, 
+            compare, and navigate to the best electric vehicle charging stations for you.
+        </p>
         <div class="row justify-content-center">
             <div class="col-md-8">
                 <form action="/stations/search" method="GET" class="d-flex gap-2">
-                    <input type="text" name="city" class="form-control form-control-lg" placeholder="Enter city name..." required>
+                    <input type="text" name="city" class="form-control form-control-lg" placeholder="Enter city name (e.g., Moscow, Mumbai, Chicago)..." required>
                     <button type="submit" class="btn btn-warning btn-lg">
                         <i class="fas fa-search me-2"></i>Search
                     </button>
@@ -19,7 +21,6 @@
     </div>
 </section>
 
-<!-- Stats Section -->
 <section class="stats-section mb-5">
     <div class="container">
         <div class="row text-center">
@@ -54,10 +55,31 @@
     </div>
 </section>
 
-<!-- Featured Stations -->
+<section class="confidence-section mb-5">
+    <div class="container">
+        <div class="card bg-dark text-white border-0 shadow overflow-hidden">
+            <div class="row g-0 align-items-center">
+                <div class="col-md-8 p-5">
+                    <h2 class="fw-bold mb-3">From range anxiety to complete confidence.</h2>
+                    <p class="lead mb-0">
+                        Leave uncertainty behind and embrace the freedom of the open road, 
+                        knowing your next charge is always under your control.
+                    </p>
+                </div>
+                <div class="col-md-4 bg-secondary text-center p-5 d-none d-md-block" style="background: rgba(255,255,255,0.1);">
+                    <i class="fas fa-route fa-5x text-warning"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <section class="featured-stations mb-5">
     <div class="container">
-        <h2 class="text-center mb-4">Featured Charging Stations</h2>
+        <div class="d-flex justify-content-between align-items-end mb-4">
+            <h2 class="mb-0">Featured Charging Stations</h2>
+            <a href="/stations" class="btn btn-outline-primary">View All</a>
+        </div>
         <div class="row g-4">
             {{#each featuredStations}}
             <div class="col-md-6 col-lg-4">
@@ -96,15 +118,9 @@
             </div>
             {{/each}}
         </div>
-        <div class="text-center mt-4">
-            <a href="/stations" class="btn btn-primary btn-lg">
-                View All Stations <i class="fas fa-arrow-right ms-2"></i>
-            </a>
-        </div>
     </div>
 </section>
 
-<!-- Features Section -->
 <section class="features-section bg-light py-5 rounded">
     <div class="container">
         <h2 class="text-center mb-5">Why Choose ChargeIT?</h2>
@@ -114,21 +130,30 @@
                     <i class="fas fa-search-location fa-3x text-primary"></i>
                 </div>
                 <h4>Smart Search</h4>
-                <p class="text-muted">Find stations by location, charger type, availability, and user ratings.</p>
+                <p class="text-muted">
+                    Don't settle for the nearest station. Find the right one. 
+                    Filter by charger type, availability, and user ratings.
+                </p>
             </div>
             <div class="col-md-4 text-center">
                 <div class="feature-icon mb-3">
                     <i class="fas fa-dollar-sign fa-3x text-success"></i>
                 </div>
-                <h4>Cost Comparison</h4>
-                <p class="text-muted">Compare pricing and choose the most cost-effective charging options.</p>
+                <h4>Transparent Pricing</h4>
+                <p class="text-muted">
+                    Compare nearby options and choose the most cost-effective charge. 
+                    No more surprises—just transparent pricing.
+                </p>
             </div>
             <div class="col-md-4 text-center">
                 <div class="feature-icon mb-3">
                     <i class="fas fa-leaf fa-3x text-info"></i>
                 </div>
                 <h4>Eco-Friendly</h4>
-                <p class="text-muted">Discover stations using renewable energy for sustainable charging.</p>
+                <p class="text-muted">
+                    Take the next step towards a greener future by prioritising stations 
+                    that use renewable energy sources.
+                </p>
             </div>
         </div>
     </div>

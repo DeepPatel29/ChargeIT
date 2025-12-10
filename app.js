@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const session = require('express-session');
-const MongoStore = require('connect-mongo'); 
+const MongoStore = require('connect-mongo');
 const { engine } = require('express-handlebars');
 const path = require('path');
 require('dotenv').config();
@@ -90,8 +90,8 @@ if (process.env.MONGO_URI) {
         sessionStore = MongoStore.create({
             mongoUrl: process.env.MONGO_URI,
             collectionName: 'sessions',
-            ttl: 24 * 60 * 60, 
-            autoRemove: 'native' 
+            ttl: 24 * 60 * 60,
+            autoRemove: 'native'
         });
         console.log("✅ Session Store: MongoDB");
     } catch (err) {
@@ -110,8 +110,8 @@ app.use(session({
     saveUninitialized: false,
     store: sessionStore,
     cookie: {
-        secure: isProduction, 
-        maxAge: 24 * 60 * 60 * 1000, 
+        secure: isProduction,
+        maxAge: 24 * 60 * 60 * 1000,
         httpOnly: true,
         sameSite: isProduction ? 'none' : 'lax'
     }
