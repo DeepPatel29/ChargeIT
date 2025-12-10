@@ -1,5 +1,43 @@
 // ChargeIT Main JavaScript
 document.addEventListener('DOMContentLoaded', function () {
+
+    // ==========================================
+    // 1. DARK MODE TOGGLE LOGIC
+    // ==========================================
+    const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
+    const currentTheme = localStorage.getItem('theme');
+
+    if (toggleSwitch) {
+        // A. Set initial state based on storage or system preference
+        if (currentTheme) {
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            if (currentTheme === 'dark') {
+                toggleSwitch.checked = true;
+            }
+        } else {
+            // Fallback: Check system preference if no theme saved
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                toggleSwitch.checked = true;
+            }
+        }
+
+        // B. Handle Switch Change Event
+        toggleSwitch.addEventListener('change', function (e) {
+            if (e.target.checked) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'light');
+                localStorage.setItem('theme', 'light');
+            }
+        });
+    }
+
+    // ==========================================
+    // 2. EXISTING APP LOGIC
+    // ==========================================
+
     // Initialize tooltips
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
     const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
@@ -76,7 +114,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 const icon = button.querySelector('i');
                 if (result.isFavorite) {
                     icon.className = 'fas fa-heart text-danger me-1';
-                    // Optional: Update text if needed
                 } else {
                     icon.className = 'far fa-heart me-1';
                 }
