@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Station = require('../models/Station');
+const PriceSuggestion = require('../models/PriceSuggestion'); // Ensure this model exists
 
 // Middleware to check if user is Admin
 const checkAdmin = (req, res, next) => {
@@ -22,6 +23,10 @@ router.get('/', async (req, res) => {
     try {
         const userCount = await User.countDocuments();
         const stationCount = await Station.countDocuments();
+        
+        // Count pending suggestions for dashboard badge
+        const pendingSuggestions = await PriceSuggestion.countDocuments({ status: 'pending' });
+
         const recentStations = await Station.find().sort({ createdAt: -1 }).limit(5).lean();
         const recentUsers = await User.find().sort({ createdAt: -1 }).limit(5).lean();
 
@@ -29,12 +34,119 @@ router.get('/', async (req, res) => {
             title: 'Admin Dashboard',
             userCount,
             stationCount,
+            pendingSuggestions,
             recentStations,
             recentUsers
         });
     } catch (error) {
         console.error(error);
         res.render('error', { message: 'Dashboard Error' });
+    }
+});
+
+// --- PRICE SUGGESTIONS (CROWD CONSENSUS) ---
+
+// GET: View Verified Suggestions (Threshold Logic)
+router.get('/price-suggestions', async (req, res) => {
+    try {
+        const threshold = 3; // Minimum users required to trigger admin review
+
+        const aggregatedSuggestions = await PriceSuggestion.aggregate([
+            // 1. Only look at pending suggestions
+            { $match: { status: 'pending' } },
+
+            // 2. Group by Station
+            {
+                $group: {
+                    _id: "$stationDbId", 
+                    stationDisplayId: { $first: "$stationId" }, 
+                    userCount: { $sum: 1 }, 
+                    avgPrice: { $avg: "$suggestedPrice" }, 
+                    suggestionIds: { $push: "$_id" } 
+                }
+            },
+
+            // 3. FILTER: Only show if >= threshold users
+            { $match: { userCount: { $gte: threshold } } },
+
+            // 4. Join with Station data for display info
+            {
+                $lookup: {
+                    from: "stations", 
+                    localField: "_id",
+                    foreignField: "_id",
+                    as: "stationData"
+                }
+            },
+            { $unwind: "$stationData" }, 
+
+            { $sort: { userCount: -1 } }
+        ]);
+
+        res.render('admin/price-suggestions', {
+            title: 'Crowdsourced Price Updates',
+            suggestions: aggregatedSuggestions,
+            threshold
+        });
+
+    } catch (error) {
+        console.error(error);
+        res.render('error', { message: 'Error fetching suggestions' });
+    }
+});
+
+// POST: Approve (Update Station Price)
+router.post('/price-suggestions/approve', async (req, res) => {
+    try {
+        const { stationDbId, finalPrice, suggestionIds } = req.body;
+        const idsArray = JSON.parse(suggestionIds);
+
+        // --- FIX START ---
+        // 1. Parse the price
+        let priceToSave = parseFloat(finalPrice);
+        
+        // 2. Fix precision: Round to 2 decimal places to avoid 0.700000001
+        priceToSave = Math.round((priceToSave + Number.EPSILON) * 100) / 100;
+        // --- FIX END ---
+
+        // Update Station
+        await Station.findByIdAndUpdate(stationDbId, {
+            costPerKWh: priceToSave
+        });
+
+        // Mark suggestions as approved
+        await PriceSuggestion.updateMany(
+            { _id: { $in: idsArray } },
+            { status: 'approved' }
+        );
+
+        // Reject other pending ones for this station
+        await PriceSuggestion.updateMany(
+            { stationDbId: stationDbId, status: 'pending' },
+            { status: 'rejected' }
+        );
+
+        res.redirect('/admin/price-suggestions');
+    } catch (error) {
+        console.error(error); // Helpful to log the actual error
+        res.render('error', { message: 'Error approving price' });
+    }
+});
+
+// POST: Reject All
+router.post('/price-suggestions/reject', async (req, res) => {
+    try {
+        const { suggestionIds } = req.body;
+        const idsArray = JSON.parse(suggestionIds);
+
+        await PriceSuggestion.updateMany(
+            { _id: { $in: idsArray } },
+            { status: 'rejected' }
+        );
+
+        res.redirect('/admin/price-suggestions');
+    } catch (error) {
+        res.render('error', { message: 'Error rejecting suggestions' });
     }
 });
 
@@ -46,7 +158,6 @@ router.get('/users', async (req, res) => {
         const searchQuery = req.query.search;
         let query = {};
 
-        // If search term exists, search by username or email
         if (searchQuery) {
             query = {
                 $or: [
@@ -61,7 +172,7 @@ router.get('/users', async (req, res) => {
         res.render('admin/users', { 
             title: 'Manage Users', 
             users,
-            searchQuery // Pass back to view to keep input populated
+            searchQuery 
         });
     } catch (error) {
         res.render('error', { message: 'Error fetching users' });

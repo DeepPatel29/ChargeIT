@@ -1,194 +1,216 @@
-<div class="row">
-    <div class="col-lg-8">
-        <!-- Station Header -->
-        <div class="card mb-4">
-            <div class="card-header bg-white">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <h2 class="mb-1">{{station.location.city}} Charging Station</h2>
-                        <p class="text-muted mb-0">
-                            <i class="fas fa-map-marker-alt me-1"></i>
-                            {{station.location.address}}, {{station.location.city}}, {{station.location.country}}
-                        </p>
+<div class="container py-4">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/">Home</a></li>
+            <li class="breadcrumb-item"><a href="/stations">Stations</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{station.location.city}}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4">
+                <img src="{{station.imageUrl}}" class="card-img-top" alt="Station Image" style="height: 400px; object-fit: cover;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h1 class="card-title h2 mb-2">{{station.location.city}} Charging Station</h1>
+                            <p class="text-muted"><i class="fas fa-map-marker-alt me-2"></i>{{station.location.address}}, {{station.location.city}}, {{station.location.country}}</p>
+                        </div>
+                        {{#if user}}
+                        <button class="btn btn-outline-danger favorite-btn" data-station-id="{{station.stationId}}" data-authenticated="true">
+                            <i class="{{#if isFavorite}}fas{{else}}far{{/if}} fa-heart me-1"></i> Favorite
+                        </button>
+                        {{/if}}
                     </div>
-                    <span class="badge bg-primary fs-6">{{station.chargerType}}</span>
+
+                    <div class="row mt-4">
+                        <div class="col-md-6 mb-3">
+                            <div class="p-3 bg-light rounded h-100">
+                                <h5 class="text-muted h6">Connector Types</h5>
+                                <div class="d-flex flex-wrap gap-2">
+                                    {{#each station.connectorTypes}}
+                                        <span class="badge bg-secondary">{{this}}</span>
+                                    {{/each}}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <div class="p-3 bg-light rounded h-100">
+                                <h5 class="text-muted h6">Pricing</h5>
+                                <div class="d-flex align-items-center justify-content-between">
+                                    {{!-- Using toFixed helper for clean display --}}
+                                    <h4 class="mb-0 text-success">${{toFixed station.costPerKWh 2}}/kWh</h4>
+                                    
+                                    {{#if user}}
+                                    <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#priceModal">
+                                        <i class="fas fa-edit me-1"></i> Suggest Edit
+                                    </button>
+                                    {{/if}}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mt-2">
+                        <div class="col-6 col-md-3">
+                            <small class="text-muted d-block">Operator</small>
+                            <strong>{{station.stationOperator}}</strong>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <small class="text-muted d-block">Power</small>
+                            <strong>{{station.chargingCapacityKW}} kW</strong>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <small class="text-muted d-block">Availability</small>
+                            <strong>{{station.availabilityHours}}</strong>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <small class="text-muted d-block">Rating</small>
+                            <span class="text-warning">
+                                <i class="fas fa-star"></i> {{station.rating}}
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="card-body">
-                <img src="{{station.imageUrl}}" class="img-fluid rounded mb-4" alt="Station Image">
-                
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <h5>Station Information</h5>
-                        <ul class="list-unstyled">
-                            <li><strong>Operator:</strong> {{station.stationOperator}}</li>
-                            <li><strong>Installed:</strong> {{station.installationYear}}</li>
-                            <li><strong>Maintenance:</strong> {{station.maintenanceFrequency}}</li>
-                            <li><strong>Parking Spots:</strong> {{station.parkingSpots}}</li>
-                        </ul>
-                    </div>
-                    <div class="col-md-6">
-                        <h5>Charging Details</h5>
-                        <ul class="list-unstyled">
-                            <li><strong>Cost:</strong> ${{station.costPerKWh}} per kWh</li>
-                            <li><strong>Capacity:</strong> {{station.chargingCapacityKW}} kW</li>
-                            <li><strong>Availability:</strong> {{station.availabilityHours}}</li>
-                            <li><strong>Renewable Energy:</strong> 
-                                {{#if station.usesRenewableEnergy}}
-                                    <span class="text-success">Yes</span>
-                                {{else}}
-                                    <span class="text-danger">No</span>
-                                {{/if}}
-                            </li>
-                        </ul>
-                    </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">User Reviews</h5>
                 </div>
-                
-                <div class="mb-4">
-                    <h5>Connector Types</h5>
-                    <div class="d-flex flex-wrap gap-2">
-                        {{#each station.connectorTypes}}
-                            <span class="badge bg-secondary">{{this}}</span>
-                        {{/each}}
-                    </div>
-                </div>
-                
-                <div class="d-flex justify-content-between align-items-center">
-                    <div class="rating">
-                        <h5 class="mb-0">Rating: {{station.rating}}/5</h5>
-                        <div class="stars">
-                            {{#times station.rating}}
-                                <i class="fas fa-star text-warning"></i>
-                            {{/times}}
-                            {{#lt station.rating 5}}
-                                {{#times (subtract 5 station.rating)}}
-                                    <i class="far fa-star text-warning"></i>
+                <div class="card-body">
+                    {{#if station.reviews.length}}
+                        {{#each station.reviews}}
+                        <div class="review-item border-bottom pb-3 mb-3">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <strong>{{this.userName}}</strong>
+                                    {{#if this.verifiedPurchase}}
+                                    <span class="badge bg-success ms-2">Verified</span>
+                                    {{/if}}
+                                </div>
+                                <small class="text-muted">{{formatDate this.date}}</small>
+                            </div>
+                            <div class="rating mb-2">
+                                {{#times this.rating}}
+                                    <i class="fas fa-star text-warning small"></i>
                                 {{/times}}
-                            {{/lt}}
+                                {{#lt this.rating 5}}
+                                    {{#times (subtract 5 this.rating)}}
+                                        <i class="far fa-star text-warning small"></i>
+                                    {{/times}}
+                                {{/lt}}
+                            </div>
+                            <p class="mb-0">{{this.comment}}</p>
                         </div>
-                        <small class="text-muted">Based on {{station.reviews.length}} reviews</small>
-                    </div>
-                    <div class="station-actions">
-                        <button class="btn btn-outline-primary me-2 favorite-btn" 
-                                data-station-id="{{station.stationId}}"
-                                data-authenticated="{{#if user}}true{{/if}}">
-                            {{#if isFavorite}}
-                                <i class="fas fa-heart text-danger me-1"></i>
-                            {{else}}
-                                <i class="far fa-heart me-1"></i>
-                            {{/if}}
-                            Save
-                        </button>
-                        <button class="btn btn-primary">
-                            <i class="fas fa-directions me-1"></i>Get Directions
-                        </button>
-                    </div>
+                        {{/each}}
+                    {{else}}
+                        <p class="text-muted text-center py-3">No reviews yet. Be the first to review this station!</p>
+                    {{/if}}
+                    
+                    {{#if user}}
+                        <div class="mt-4">
+                            <a href="/stations/{{station.stationId}}/review" class="btn btn-primary">
+                                <i class="fas fa-edit me-1"></i>Write a Review
+                            </a>
+                        </div>
+                    {{else}}
+                        <div class="alert alert-info mt-3">
+                            <a href="/auth/login" class="alert-link">Login</a> to write a review for this station.
+                        </div>
+                    {{/if}}
                 </div>
             </div>
         </div>
-        
-        <!-- Reviews Section -->
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">User Reviews</h5>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Location</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="bg-light d-flex align-items-center justify-content-center text-muted" style="height: 250px;">
+                        <div>
+                            <i class="fas fa-map-marked-alt fa-3x mb-2"></i>
+                            <p>Map View Placeholder</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
-                {{#if station.reviews.length}}
-                    {{#each station.reviews}}
-                    <div class="review-item border-bottom pb-3 mb-3">
-                        <div class="d-flex justify-content-between align-items-start mb-2">
-                            <div>
-                                <strong>{{this.userName}}</strong>
-                                {{#if this.verifiedPurchase}}
-                                    <span class="badge bg-success ms-2">Verified</span>
-                                {{/if}}
-                            </div>
-                            <small class="text-muted">{{formatDate this.date}}</small>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0">Nearby Stations</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    {{#each nearbyStations}}
+                    <a href="/stations/{{this.stationId}}" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{this.location.city}}</h6>
+                            <small class="text-muted">{{this.distanceToCityKm}}km</small>
                         </div>
-                        <div class="rating mb-2">
-                            {{#times this.rating}}
-                                <i class="fas fa-star text-warning small"></i>
-                            {{/times}}
-                            {{#lt this.rating 5}}
-                                {{#times (subtract 5 this.rating)}}
-                                    <i class="far fa-star text-warning small"></i>
-                                {{/times}}
-                            {{/lt}}
-                        </div>
-                        <p class="mb-0">{{this.comment}}</p>
-                    </div>
+                        <p class="mb-1 small text-muted">{{this.chargerType}}</p>
+                    </a>
                     {{/each}}
-                {{else}}
-                    <p class="text-muted text-center py-3">No reviews yet. Be the first to review this station!</p>
-                {{/if}}
-                
-                {{#if user}}
-                    <div class="mt-4">
-                        <!-- THIS IS THE FIXED BUTTON -->
-                        <a href="/stations/{{station.stationId}}/review" class="btn btn-primary">
-                            <i class="fas fa-edit me-1"></i>Write a Review
-                        </a>
+                </div>
+            </div>
+
+             <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Station Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 mb-3">
+                            <div class="stat-item">
+                                <i class="fas fa-users fa-2x text-primary mb-2"></i>
+                                <h5>{{station.usageStats.avgUsersPerDay}}</h5>
+                                <small class="text-muted">Avg Users/Day</small>
+                            </div>
+                        </div>
+                        <div class="col-6 mb-3">
+                            <div class="stat-item">
+                                <i class="fas fa-road fa-2x text-info mb-2"></i>
+                                <h5>{{station.distanceToCityKm}}km</h5>
+                                <small class="text-muted">To City Center</small>
+                            </div>
+                        </div>
                     </div>
-                {{else}}
-                    <div class="alert alert-info mt-3">
-                        <a href="/auth/login" class="alert-link">Login</a> to write a review for this station.
-                    </div>
-                {{/if}}
+                </div>
             </div>
         </div>
     </div>
-    
-    <div class="col-lg-4">
-        <!-- Nearby Stations -->
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Nearby Stations</h5>
+</div>
+
+<div class="modal fade" id="priceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Suggest New Price</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="card-body">
-                {{#if nearbyStations.length}}
-                    {{#each nearbyStations}}
-                    <div class="nearby-station mb-3 pb-3 border-bottom">
-                        <h6 class="mb-1">{{this.location.city}}</h6>
-                        <p class="text-muted small mb-2">{{this.location.address}}</p>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <span class="badge bg-primary small">{{this.chargerType}}</span>
-                                <span class="badge bg-success small">${{this.costPerKWh}}</span>
-                            </div>
-                            <a href="/stations/{{this.stationId}}" class="btn btn-outline-primary btn-sm">
-                                View
-                            </a>
+            <div class="modal-body">
+                <form id="priceForm">
+                    <input type="hidden" name="stationId" value="{{station.stationId}}">
+                    <input type="hidden" name="stationDbId" value="{{station._id}}">
+                    <input type="hidden" name="currentPrice" value="{{station.costPerKWh}}">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Current Price: <strong>${{toFixed station.costPerKWh 2}}</strong></label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" step="0.01" min="0" class="form-control" name="suggestedPrice" required placeholder="0.00">
+                            <span class="input-group-text">/kWh</span>
+                        </div>
+                        <div class="form-text mt-2">
+                            <i class="fas fa-info-circle"></i> 
+                            Your suggestion will be reviewed. Prices are updated once confirmed by multiple users.
                         </div>
                     </div>
-                    {{/each}}
-                {{else}}
-                    <p class="text-muted text-center">No nearby stations found.</p>
-                {{/if}}
-            </div>
-        </div>
-        
-        <!-- Station Stats -->
-        <div class="card mt-4">
-            <div class="card-header">
-                <h5 class="mb-0">Station Statistics</h5>
-            </div>
-            <div class="card-body">
-                <div class="row text-center">
-                    <div class="col-6 mb-3">
-                        <div class="stat-item">
-                            <i class="fas fa-users fa-2x text-primary mb-2"></i>
-                            <h5>{{station.usageStats.avgUsersPerDay}}</h5>
-                            <small class="text-muted">Avg Users/Day</small>
-                        </div>
-                    </div>
-                    <div class="col-6 mb-3">
-                        <div class="stat-item">
-                            <i class="fas fa-road fa-2x text-info mb-2"></i>
-                            <h5>{{station.distanceToCityKm}}km</h5>
-                            <small class="text-muted">To City Center</small>
-                        </div>
-                    </div>
-                </div>
+                    <button type="submit" class="btn btn-primary w-100">Submit Suggestion</button>
+                </form>
             </div>
         </div>
     </div>

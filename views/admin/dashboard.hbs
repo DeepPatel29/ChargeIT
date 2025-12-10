@@ -5,8 +5,7 @@
 </div>
 
 <div class="row mb-4">
-    <!-- Stats Cards -->
-    <div class="col-md-6 mb-3">
+    <div class="col-md-4 mb-3">
         <div class="card text-white bg-primary h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
@@ -20,7 +19,8 @@
             </div>
         </div>
     </div>
-    <div class="col-md-6 mb-3">
+
+    <div class="col-md-4 mb-3">
         <div class="card text-white bg-success h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
@@ -34,10 +34,24 @@
             </div>
         </div>
     </div>
+
+    <div class="col-md-4 mb-3">
+        <div class="card text-dark bg-warning h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-0">Price Updates</h6>
+                        <h2 class="my-2">{{pendingSuggestions}}</h2>
+                    </div>
+                    <i class="fas fa-tags fa-3x opacity-50"></i>
+                </div>
+                <a href="/admin/price-suggestions" class="text-dark text-decoration-none small">Review Suggestions &rarr;</a>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="row">
-    <!-- Recent Activity -->
     <div class="col-md-6 mb-4">
         <div class="card h-100">
             <div class="card-header bg-light">

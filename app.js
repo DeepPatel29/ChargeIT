@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const session = require('express-session');
-const MongoStore = require('connect-mongo'); // Import Connect Mongo
+const MongoStore = require('connect-mongo'); 
 const { engine } = require('express-handlebars');
 const path = require('path');
 require('dotenv').config();
@@ -59,6 +59,11 @@ app.engine('hbs', engine({
             } catch (e) { return 'Invalid Date'; }
         },
         json: (context) => JSON.stringify(context, null, 2),
+        // NEW HELPER: Formats numbers to fixed decimal places (e.g., price)
+        toFixed: (num, digits) => {
+            if (typeof num !== 'number') return num;
+            return num.toFixed(digits);
+        },
         length: (array) => array ? array.length : 0,
         uppercase: (str) => str ? str.toUpperCase() : '',
         ifEq: (a, b, options) => a === b ? options.fn(this) : options.inverse(this),
@@ -78,7 +83,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // --- SESSION CONFIGURATION ---
 let sessionStore;
-// Check if we are in production (Vercel) or development (Local)
 const isProduction = process.env.NODE_ENV === 'production';
 
 if (process.env.MONGO_URI) {
@@ -106,16 +110,12 @@ app.use(session({
     saveUninitialized: false,
     store: sessionStore,
     cookie: {
-        // Secure is TRUE only if we are strictly in production AND not localhost
         secure: isProduction, 
         maxAge: 24 * 60 * 60 * 1000, 
         httpOnly: true,
-        // 'lax' allows logging in on http://localhost
         sameSite: isProduction ? 'none' : 'lax'
     }
 }));
-
-console.log(`ℹ️  Cookie Settings -> Secure: ${isProduction}, SameSite: ${isProduction ? 'none' : 'lax'}`);
 
 app.use((req, res, next) => {
     res.locals.user = req.session.user || null;

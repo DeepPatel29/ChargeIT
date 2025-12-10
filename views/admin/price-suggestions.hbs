@@ -1,0 +1,60 @@
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="fas fa-users-cog me-2"></i>Crowd-Verified Price Updates</h2>
+    <span class="badge bg-info text-dark">Threshold: {{threshold}} Users</span>
+</div>
+
+<div class="mb-3">
+    <a href="/admin" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+
+{{#unless suggestions.length}}
+    <div class="alert alert-success text-center py-5">
+        <i class="fas fa-check-circle fa-3x mb-3"></i>
+        <h4>All clear!</h4>
+        <p>No stations have reached the {{threshold}}-user suggestion threshold yet.</p>
+    </div>
+{{else}}
+    <div class="row">
+        {{#each suggestions}}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card shadow-sm border-warning h-100">
+                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                    <strong>{{this.stationData.location.city}}</strong>
+                    <span class="badge bg-dark">{{this.userCount}} Suggestions</span>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-2">ID: {{this.stationDisplayId}}</p>
+                    <p class="mb-1">Current Price: <strong>${{this.stationData.costPerKWh}}</strong></p>
+                    
+                    <hr>
+                    
+                    <h5 class="text-center text-primary mb-3">
+                        Suggested Avg: ${{toFixed this.avgPrice 2}}
+                    </h5>
+
+                    {{!-- Action Forms --}}
+                    <div class="d-grid gap-2">
+                        <form action="/admin/price-suggestions/approve" method="POST">
+                            <input type="hidden" name="stationDbId" value="{{this._id}}">
+                            <input type="hidden" name="finalPrice" value="{{this.avgPrice}}">
+                            {{!-- Pass the array of IDs so we can mark them all approved --}}
+                            <input type="hidden" name="suggestionIds" value="{{json this.suggestionIds}}">
+                            
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="fas fa-check me-2"></i>Approve Change
+                            </button>
+                        </form>
+
+                        <form action="/admin/price-suggestions/reject" method="POST">
+                            <input type="hidden" name="suggestionIds" value="{{json this.suggestionIds}}">
+                            <button type="submit" class="btn btn-outline-danger w-100">
+                                <i class="fas fa-times me-2"></i>Ignore All
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {{/each}}
+    </div>
+{{/unless}}

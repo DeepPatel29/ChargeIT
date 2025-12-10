@@ -40,40 +40,11 @@
     --footer-bg: #000;
 }
 
-/* --- Dark Mode Overrides --- */
-[data-theme="dark"] .bg-white {
-    /* Forces 'bg-white' elements (like the Station header) to match the dark card background */
-    background-color: var(--card-bg) !important;
-    color: var(--body-text) !important;
-}
-
-[data-theme="dark"] .card-header {
-    /* Ensures all card headers have a suitable border in dark mode */
-    border-bottom-color: var(--card-border);
-}
-
-[data-theme="dark"] .btn-outline-dark {
-    /* Flips the Google button to be light-colored in dark mode */
-    color: #e0e0e0;
-    border-color: #e0e0e0;
-}
-
-[data-theme="dark"] .btn-outline-dark:hover {
-    /* on hover, make it white background with black text */
-    background-color: #e0e0e0;
-    color: #000;
-}
-
-/* Optional: Ensure text-muted is distinct but visible on dark backgrounds */
-[data-theme="dark"] .text-muted {
-    color: #b0b0b0 !important;
-}
-
 /* --- Global Elements --- */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: var(--body-bg) !important;
-    color: var(--body-text) !important; /* This applies the variable */
+    color: var(--body-text) !important;
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
@@ -82,7 +53,7 @@ body {
     background-color: var(--card-bg);
     border: 1px solid var(--card-border);
     border-radius: 0.5rem;
-    color: var(--body-text); /* Important for card text */
+    color: var(--body-text);
 }
 
 .station-card {
@@ -201,7 +172,7 @@ body {
     color: #a0a0a0 !important;
 }
 
-/* Toggle Switch Styles */
+/* --- Toggle Switch Styles --- */
 .theme-switch-wrapper {
     display: flex;
     align-items: center;
@@ -237,6 +208,7 @@ body {
     width: 18px;
     border-radius: 50%;
 }
+/* Icons inside slider */
 .slider:after {
     content: '☀️';
     position: absolute;
@@ -258,7 +230,7 @@ input:checked + .slider:after {
     color: white;
 }
 
-/* Responsive & Loading */
+/* Responsive & Utilities */
 @media (max-width: 768px) {
     .hero-section h1 { font-size: 2rem; }
     .station-card .row { flex-direction: column; }

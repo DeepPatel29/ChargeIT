@@ -1,6 +1,7 @@
 const express = require('express');
 const Station = require('../models/Station');
 const User = require('../models/User'); 
+const PriceSuggestion = require('../models/PriceSuggestion'); // NEW IMPORT
 const router = express.Router();
 
 // Get all stations with pagination
@@ -38,12 +39,10 @@ router.get('/', async (req, res) => {
 
         const totalPages = Math.ceil(totalStations / perPage);
 
-        // --- NEW PAGINATION LOGIC START ---
-        // Calculate a sliding window of pages (e.g., show 5 pages around current)
+        // --- SMART PAGINATION LOGIC ---
         let startPage = Math.max(1, page - 2);
         let endPage = Math.min(totalPages, page + 2);
 
-        // Ensure we always show at least 5 pages if available
         if (endPage - startPage < 4) {
             if (startPage === 1) {
                 endPage = Math.min(totalPages, startPage + 4);
@@ -56,16 +55,15 @@ router.get('/', async (req, res) => {
         for (let i = startPage; i <= endPage; i++) {
             pages.push(i);
         }
-        // --- NEW PAGINATION LOGIC END ---
 
         res.render('stations/list', {
             title: 'All Charging Stations - ChargeIT',
             stations,
             currentPage: page,
             totalPages,
-            pages, // Pass the calculated array of page numbers
-            showFirst: startPage > 1, // Flag to show "1 ..."
-            showLast: endPage < totalPages, // Flag to show "... 100"
+            pages,
+            showFirst: startPage > 1,
+            showLast: endPage < totalPages,
             perPage,
             totalStations,
             dbError
@@ -141,15 +139,13 @@ router.get('/search', async (req, res) => {
     }
 });
 
-// NEW: GET Review Form
+// GET Review Form
 router.get('/:id/review', async (req, res) => {
-    // 1. Check Login
     if (!req.session.user) {
         return res.redirect('/auth/login');
     }
 
     try {
-        // 2. Find Station
         let station = null;
         if (req.app.locals.dbConnected && req.app.locals.dbConnected()) {
             station = await Station.findOne({ stationId: req.params.id }).lean();
@@ -169,9 +165,8 @@ router.get('/:id/review', async (req, res) => {
     }
 });
 
-// NEW: POST Submit Review
+// POST Submit Review
 router.post('/:id/review', async (req, res) => {
-    // 1. Check Login
     if (!req.session.user) {
         return res.redirect('/auth/login');
     }
@@ -186,8 +181,6 @@ router.post('/:id/review', async (req, res) => {
                 return res.status(404).render('error', { message: 'Station not found' });
             }
 
-            // 2. Create Review Object
-            // Generate ID matching regex ^REV\d{4}$
             const randomId = Math.floor(1000 + Math.random() * 9000); 
             const newReview = {
                 reviewId: `REV${randomId}`,
@@ -196,19 +189,15 @@ router.post('/:id/review', async (req, res) => {
                 rating: parseInt(rating),
                 comment: comment,
                 date: new Date(),
-                verifiedPurchase: true // Assuming true for this demo
+                verifiedPurchase: true
             };
 
-            // 3. Add to array
             station.reviews.push(newReview);
 
-            // 4. Recalculate Average Rating
             const totalRating = station.reviews.reduce((sum, r) => sum + r.rating, 0);
             station.rating = (totalRating / station.reviews.length).toFixed(1);
 
             await station.save();
-            
-            // Redirect back to detail page
             res.redirect(`/stations/${req.params.id}`);
         } else {
             res.render('error', { message: 'Cannot save review: Database unavailable' });
@@ -216,6 +205,35 @@ router.post('/:id/review', async (req, res) => {
     } catch (error) {
         console.error('Review submit error:', error);
         res.status(500).render('error', { message: 'Failed to submit review' });
+    }
+});
+
+// --- NEW: Handle Price Suggestion Submission ---
+router.post('/suggest-price', async (req, res) => {
+    // 1. Check Login
+    if (!req.session.user) {
+        return res.status(401).json({ success: false, message: 'Please login to suggest prices' });
+    }
+
+    try {
+        const { stationId, stationDbId, suggestedPrice, currentPrice } = req.body;
+
+        // 2. Save Suggestion
+        const suggestion = new PriceSuggestion({
+            stationId: stationId,
+            stationDbId: stationDbId,
+            userId: req.session.user.id,
+            username: req.session.user.username,
+            suggestedPrice: parseFloat(suggestedPrice),
+            currentPriceAtTime: parseFloat(currentPrice)
+        });
+
+        await suggestion.save();
+        res.json({ success: true, message: 'Price suggestion submitted for community review!' });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Error saving suggestion' });
     }
 });
 
@@ -364,6 +382,8 @@ router.get('/api/stations', async (req, res) => {
         });
     }
 });
+
+// --- HELPER FUNCTIONS ---
 
 function filterSampleStations(query) {
     const { city, country, chargerType, minRating } = query;

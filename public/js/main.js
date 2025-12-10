@@ -40,13 +40,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Initialize tooltips
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl);
     });
 
     // Auto-dismiss alerts after 5 seconds
-    // UPDATED: Only target alerts with the extra class 'auto-dismiss'
-    const alerts = document.querySelectorAll('.alert.auto-dismiss');
+    const alerts = document.querySelectorAll('.alert');
     alerts.forEach(alert => {
         setTimeout(() => {
             const bsAlert = new bootstrap.Alert(alert);
@@ -82,6 +81,46 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
+
+    // ==========================================
+    // 3. PRICE SUGGESTION LOGIC (FIXED)
+    // ==========================================
+    const priceForm = document.getElementById('priceForm');
+    if (priceForm) {
+        priceForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                const res = await fetch('/stations/suggest-price', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await res.json();
+                
+                // Hide Modal using Bootstrap API
+                const modalEl = document.getElementById('priceModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+
+                if(result.success) {
+                    alert(result.message);
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            } catch(err) {
+                console.error(err);
+                alert('Failed to send suggestion.');
+            }
+        });
+    }
+
+    // ==========================================
+    // 4. HELPER FUNCTIONS
+    // ==========================================
 
     // Rating display helper
     function displayRating(rating, element) {
@@ -119,9 +158,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     icon.className = 'far fa-heart me-1';
                 }
             } else {
-                console.error('Failed to toggle favorite:', result.message);
                 if (result.message === 'Unauthorized') {
                     window.location.href = '/auth/login';
+                } else {
+                    console.error('Failed to toggle favorite:', result.message);
                 }
             }
         } catch (error) {
@@ -141,7 +181,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return R * c;
     }
 
-    // Export functions to global scope for use in templates
+    // Export functions to global scope
     window.ChargeIT = {
         calculateDistance,
         displayRating,
