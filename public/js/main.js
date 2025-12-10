@@ -45,7 +45,8 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Auto-dismiss alerts after 5 seconds
-    const alerts = document.querySelectorAll('.alert');
+    // UPDATED: Only target alerts with the extra class 'auto-dismiss'
+    const alerts = document.querySelectorAll('.alert.auto-dismiss');
     alerts.forEach(alert => {
         setTimeout(() => {
             const bsAlert = new bootstrap.Alert(alert);
