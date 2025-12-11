@@ -7,9 +7,8 @@ const nodemailer = require('nodemailer');
 const admin = require('firebase-admin');
 
 // ==========================================
-// 1. FIREBASE ADMIN CONFIGURATION (FIXED)
+// 1. FIREBASE ADMIN CONFIGURATION
 // ==========================================
-// Check if Firebase is already initialized to prevent errors
 if (!admin.apps.length) {
     try {
         let serviceAccount;
@@ -21,7 +20,6 @@ if (!admin.apps.length) {
             console.log("⚙️ Loading Firebase Admin from Environment Variable...");
         } else {
             // Fallback: We are Local (File System)
-            // Ensure this file exists locally but is ignored by Git!
             serviceAccount = require('../firebase-service-account.json'); 
             console.log("⚙️ Loading Firebase Admin from Local File...");
         }
@@ -37,17 +35,19 @@ if (!admin.apps.length) {
 }
 
 // ==========================================
-// 2. EMAIL CONFIGURATION (FIXED)
+// 2. EMAIL CONFIGURATION (FINAL FIX)
 // ==========================================
-// Use explicit settings for better reliability on Render
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 465,
-    secure: false, // Must be false for port 587
+    port: 587,      // Standard TLS port
+    secure: false,  // Must be false for 587
     auth: {
         user: process.env.EMAIL_USER, 
         pass: process.env.EMAIL_PASS 
-    }
+    },
+    // 🚨 CRITICAL FIX: Forces IPv4. 
+    // Fixes the "Connection Timeout" on Render/Google.
+    family: 4 
 });
 
 // Middleware to check if user is Admin
@@ -150,7 +150,6 @@ router.get('/price-suggestions', async (req, res) => {
 });
 
 // POST: Approve (Update Station Price & Send Emails)
-// FIX: Using async iteration properly
 router.post('/price-suggestions/approve', async (req, res) => {
     try {
         const { stationDbId, finalPrice, suggestionIds } = req.body;
@@ -172,12 +171,13 @@ router.post('/price-suggestions/approve', async (req, res) => {
         const approvedSuggestions = await PriceSuggestion.find({ _id: { $in: idsArray } })
             .populate('userId');
 
-        // 4. Send Email to Each User (FIXED LOOP)
+        // 4. Send Email to Each User (BACKGROUND MODE)
         if (process.env.EMAIL_USER) {
-            console.log(`📧 Starting email notifications for ${approvedSuggestions.length} users...`);
+            console.log(`📧 Queuing emails for ${approvedSuggestions.length} users...`);
             
-            // USE for...of loop so 'await' actually works!
-            for (const suggestion of approvedSuggestions) {
+            // Loop through users but DO NOT 'await' the email sending.
+            // This prevents the page from loading forever.
+            approvedSuggestions.forEach(suggestion => {
                 if (suggestion.userId && suggestion.userId.email) {
                     const mailOptions = {
                         from: process.env.EMAIL_USER,
@@ -210,14 +210,12 @@ router.post('/price-suggestions/approve', async (req, res) => {
                         `
                     };
 
-                    try {
-                        await transporter.sendMail(mailOptions);
-                        console.log(`✅ Email sent to ${suggestion.userId.email}`);
-                    } catch (err) {
-                        console.error(`❌ Email failed for ${suggestion.userId.email}:`, err.message);
-                    }
+                    // Send in background (Fire and Forget)
+                    transporter.sendMail(mailOptions)
+                        .then(() => console.log(`✅ Background email sent to ${suggestion.userId.email}`))
+                        .catch(err => console.error(`❌ Background email failed for ${suggestion.userId.email}:`, err.message));
                 }
-            }
+            });
         } else {
             console.warn('⚠️ No EMAIL_USER in .env - Emails skipped.');
         }
@@ -233,7 +231,9 @@ router.post('/price-suggestions/approve', async (req, res) => {
             { status: 'rejected' }
         );
 
+        // 6. Redirect Immediately (User does not wait for emails)
         res.redirect('/admin/price-suggestions');
+
     } catch (error) {
         console.error("Approve Route Error:", error);
         res.render('error', { message: 'Error approving price' });
