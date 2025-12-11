@@ -38,12 +38,12 @@ if (!admin.apps.length) {
 // 2. EMAIL CONFIGURATION
 // ==========================================
 const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,      // Standard TLS port
-    secure: true,   // Must be true for 465
+    host: 'smtp-relay.brevo.com',  // Brevo's SMTP server
+    port: 587,                     // Standard Port
+    secure: false,                 // Must be false for 587
     auth: {
-        user: process.env.EMAIL_USER, 
-        pass: process.env.EMAIL_PASS 
+        user: process.env.EMAIL_USER, // Your Brevo Login Email
+        pass: process.env.EMAIL_PASS  // Your Brevo SMTP Key (xsmtpsib-...)
     },
     // Forces IPv4 to prevent Google timeouts on Vercel/Render
     family: 4 
