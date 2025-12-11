@@ -3,126 +3,117 @@ const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const router = express.Router();
 const crypto = require('crypto');
-const jwt = require('jsonwebtoken'); // NEW IMPORT
+const jwt = require('jsonwebtoken'); // Ensure this is installed
+const admin = require('firebase-admin'); // Import directly
 
-// Try to load firebase admin
-let admin;
-try {
-    admin = require('../config/firebase');
-} catch (error) {
-    console.warn("⚠️ Firebase Admin not initialized.");
+// ==========================================
+// 1. ROBUST FIREBASE INITIALIZATION
+// ==========================================
+// This fixes the "Firebase not initialized" error on Vercel
+if (!admin.apps.length) {
+    try {
+        let serviceAccount;
+        if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+            // Vercel / Render (Production)
+            serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+            console.log("✅ Auth Route: Loaded Firebase from Environment Variable");
+        } else {
+            // Local Development
+            try {
+                serviceAccount = require('../config/firebase-service-account.json');
+                console.log("✅ Auth Route: Loaded Firebase from Local File");
+            } catch (e) {
+                console.warn("⚠️ Local firebase-service-account.json not found.");
+            }
+        }
+
+        if (serviceAccount) {
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount)
+            });
+        }
+    } catch (error) {
+        console.error("❌ Firebase Init Error:", error.message);
+    }
 }
 
-// ==========================================
-// HELPER: Generate Token & Set Cookie
-// ==========================================
+// Helper to generate Token & Cookie (reused from your previous setup)
 const createTokenAndCookie = (user, res) => {
-    // 1. Create Payload (Data inside the token)
     const payload = {
         id: user._id, 
         username: user.username,
         email: user.email,
         isAdmin: user.isAdmin
     };
-
-    // 2. Sign Token
-    const token = jwt.sign(payload, process.env.SESSION_SECRET || 'fallback-secret-key', {
-        expiresIn: '1d' // Token valid for 1 day
-    });
-
-    // 3. Send Cookie
+    const token = jwt.sign(payload, process.env.SESSION_SECRET || 'fallback-secret', { expiresIn: '1d' });
     res.cookie('token', token, {
-        httpOnly: true, // Security: JavaScript cannot read this (prevents XSS)
-        secure: process.env.NODE_ENV === 'production', // HTTPS only on Vercel
-        maxAge: 24 * 60 * 60 * 1000 // 1 Day
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 24 * 60 * 60 * 1000
     });
 };
 
-// Registration form
+// Registration Routes
 router.get('/register', (req, res) => {
-    if (req.user) return res.redirect('/'); // Changed from req.session.user
+    if (req.user) return res.redirect('/');
     res.render('auth/register', { title: 'Register - ChargeIT', errors: [] });
 });
 
-// Registration processing
 router.post('/register', [
     body('username').trim().isLength({ min: 3, max: 30 }).withMessage('Username must be 3-30 characters'),
-    body('email').isEmail().withMessage('Please enter a valid email').normalizeEmail(),
-    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-    body('confirmPassword').custom((value, { req }) => value === req.body.password).withMessage('Passwords do not match')
+    body('email').isEmail().withMessage('Valid email required').normalizeEmail(),
+    body('password').isLength({ min: 6 }).withMessage('Password must be 6+ chars'),
+    body('confirmPassword').custom((value, { req }) => value === req.body.password).withMessage('Passwords mismatch')
 ], async (req, res) => {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.render('auth/register', { title: 'Register - ChargeIT', errors: errors.array(), formData: req.body });
-    }
+    if (!errors.isEmpty()) return res.render('auth/register', { title: 'Register', errors: errors.array(), formData: req.body });
 
     try {
         const { username, email, password } = req.body;
-        const existingUser = await User.findOne({ $or: [{ email }, { username }] });
-
-        if (existingUser) {
-            return res.render('auth/register', {
-                title: 'Register - ChargeIT',
-                errors: [{ msg: 'User with this email or username already exists' }],
-                formData: req.body
-            });
-        }
+        const existing = await User.findOne({ $or: [{ email }, { username }] });
+        if (existing) return res.render('auth/register', { title: 'Register', errors: [{ msg: 'User already exists' }], formData: req.body });
 
         const user = new User({ username, email, password });
         await user.save();
-
-        // Auto-login (Issue Token)
         createTokenAndCookie(user, res);
         res.redirect('/');
-
     } catch (error) {
-        console.error('Registration error:', error);
-        res.render('auth/register', { title: 'Register - ChargeIT', errors: [{ msg: 'Registration failed.' }], formData: req.body });
+        console.error(error);
+        res.render('auth/register', { title: 'Register', errors: [{ msg: 'Server error' }], formData: req.body });
     }
 });
 
-// Login form
+// Login Routes
 router.get('/login', (req, res) => {
-    if (req.user) return res.redirect('/'); // Changed from req.session.user
+    if (req.user) return res.redirect('/');
     res.render('auth/login', { title: 'Login - ChargeIT', errors: [] });
 });
 
-// Login processing
-router.post('/login', [
-    body('email').isEmail().withMessage('Please enter a valid email').normalizeEmail(),
-    body('password').notEmpty().withMessage('Password is required')
-], async (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-        return res.render('auth/login', { title: 'Login - ChargeIT', errors: errors.array(), formData: req.body });
-    }
-
+router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
         const user = await User.findOne({ email });
-
+        
         if (!user || !(await user.comparePassword(password))) {
-            return res.render('auth/login', {
-                title: 'Login - ChargeIT',
-                errors: [{ msg: 'Invalid email or password' }],
-                formData: req.body
-            });
+            return res.render('auth/login', { title: 'Login', errors: [{ msg: 'Invalid credentials' }], formData: req.body });
         }
-
-        // Login Success (Issue Token)
+        
         createTokenAndCookie(user, res);
         res.redirect('/');
-
     } catch (error) {
-        console.error('Login error:', error);
-        res.render('auth/login', { title: 'Login - ChargeIT', errors: [{ msg: 'Login failed.' }], formData: req.body });
+        console.error(error);
+        res.render('auth/login', { title: 'Login', errors: [{ msg: 'Login failed' }] });
     }
 });
 
-// Google Login Processing
+// Google Login Route (Fixed)
 router.post('/google', async (req, res) => {
     const { token } = req.body;
-    if (!admin) return res.status(500).json({ success: false, message: 'Firebase not initialized.' });
+    
+    // Check if admin is actually initialized
+    if (!admin.apps.length) {
+        return res.status(500).json({ success: false, message: 'Firebase not configured on server.' });
+    }
 
     try {
         const decodedToken = await admin.auth().verifyIdToken(token);
@@ -133,30 +124,28 @@ router.post('/google', async (req, res) => {
         if (!user) {
             const randomPassword = crypto.randomBytes(16).toString('hex');
             let username = name || email.split('@')[0];
-            const userExists = await User.findOne({ username });
-            if (userExists) username += Math.floor(Math.random() * 1000);
+            if (await User.findOne({ username })) username += Math.floor(Math.random() * 1000);
 
-            user = new User({ username, email, password: randomPassword, isAdmin: false });
+            user = new User({ username, email, password: randomPassword });
             await user.save();
         }
 
-        // Login Success (Issue Token)
         createTokenAndCookie(user, res);
         res.json({ success: true });
 
     } catch (error) {
         console.error('Google Auth Error:', error);
-        res.status(401).json({ success: false, message: 'Invalid token' });
+        res.status(401).json({ success: false, message: 'Invalid Google Token' });
     }
 });
 
 // Logout
-router.post('/logout', (req, res) => {
-    res.clearCookie('token'); // Delete the cookie
+router.get('/logout', (req, res) => {
+    res.clearCookie('token');
     res.redirect('/');
 });
-router.get('/logout', (req, res) => {
-    res.clearCookie('token'); // Delete the cookie
+router.post('/logout', (req, res) => {
+    res.clearCookie('token');
     res.redirect('/');
 });
 

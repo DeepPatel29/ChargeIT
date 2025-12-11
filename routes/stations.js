@@ -1,7 +1,7 @@
 const express = require('express');
 const Station = require('../models/Station');
 const User = require('../models/User'); 
-const PriceSuggestion = require('../models/PriceSuggestion'); // NEW IMPORT
+const PriceSuggestion = require('../models/PriceSuggestion'); 
 const router = express.Router();
 
 // Get all stations with pagination
@@ -141,7 +141,8 @@ router.get('/search', async (req, res) => {
 
 // GET Review Form
 router.get('/:id/review', async (req, res) => {
-    if (!req.session.user) {
+    // 🚨 JWT FIX: Check req.user instead of req.session.user
+    if (!req.user) {
         return res.redirect('/auth/login');
     }
 
@@ -167,7 +168,8 @@ router.get('/:id/review', async (req, res) => {
 
 // POST Submit Review
 router.post('/:id/review', async (req, res) => {
-    if (!req.session.user) {
+    // 🚨 JWT FIX: Check req.user instead of req.session.user
+    if (!req.user) {
         return res.redirect('/auth/login');
     }
 
@@ -184,8 +186,9 @@ router.post('/:id/review', async (req, res) => {
             const randomId = Math.floor(1000 + Math.random() * 9000); 
             const newReview = {
                 reviewId: `REV${randomId}`,
-                userId: req.session.user.id,
-                userName: req.session.user.username,
+                // 🚨 JWT FIX: Use req.user.id and req.user.username
+                userId: req.user.id,
+                userName: req.user.username,
                 rating: parseInt(rating),
                 comment: comment,
                 date: new Date(),
@@ -210,8 +213,8 @@ router.post('/:id/review', async (req, res) => {
 
 // --- NEW: Handle Price Suggestion Submission ---
 router.post('/suggest-price', async (req, res) => {
-    // 1. Check Login
-    if (!req.session.user) {
+    // 🚨 JWT FIX: Check req.user instead of req.session.user
+    if (!req.user) {
         return res.status(401).json({ success: false, message: 'Please login to suggest prices' });
     }
 
@@ -222,8 +225,9 @@ router.post('/suggest-price', async (req, res) => {
         const suggestion = new PriceSuggestion({
             stationId: stationId,
             stationDbId: stationDbId,
-            userId: req.session.user.id,
-            username: req.session.user.username,
+            // 🚨 JWT FIX: Use req.user.id and req.user.username
+            userId: req.user.id,
+            username: req.user.username,
             suggestedPrice: parseFloat(suggestedPrice),
             currentPriceAtTime: parseFloat(currentPrice)
         });
@@ -247,9 +251,11 @@ router.get('/:id', async (req, res) => {
 
         if (req.app.locals.dbConnected && req.app.locals.dbConnected()) {
             try {
+                // Try to find the station by stationId
                 station = await Station.findOne({ stationId: req.params.id }).lean();
-
+                
                 if (!station) {
+                    // Fallback to sample logic (though better to fix the data)
                     station = getSampleStations().find(s => s.stationId === req.params.id);
                     dbError = true;
                 } else {
@@ -258,8 +264,10 @@ router.get('/:id', async (req, res) => {
                         'location.city': station.location.city
                     }).limit(4).lean();
 
-                    if (req.session.user) {
-                        const user = await User.findById(req.session.user.id);
+                    // 🚨 JWT FIX: Check req.user instead of req.session.user
+                    if (req.user) {
+                        const user = await User.findById(req.user.id);
+                        // The ID in the JWT is not an object, so we convert it to string for comparison
                         if (user && user.favoriteStations.some(id => id.toString() === station._id.toString())) {
                             isFavorite = true;
                         }
