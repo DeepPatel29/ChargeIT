@@ -39,8 +39,8 @@ if (!admin.apps.length) {
 // ==========================================
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
-    port: 587,      // Standard TLS port
-    secure: false,  // Must be false for 587
+    port: 465,      // Standard TLS port
+    secure: true,  // Must be false for 587
     auth: {
         user: process.env.EMAIL_USER, 
         pass: process.env.EMAIL_PASS 
