@@ -3,8 +3,37 @@ const router = express.Router();
 const User = require('../models/User');
 const Station = require('../models/Station');
 const PriceSuggestion = require('../models/PriceSuggestion'); 
-const nodemailer = require('nodemailer'); // Required for email notifications
+const nodemailer = require('nodemailer'); 
 
+// ==========================================
+// FIREBASE ADMIN CONFIGURATION (Add this block)
+// ==========================================
+const admin = require('firebase-admin');
+
+// 1. Check if Firebase is already initialized to prevent "App already exists" errors
+if (!admin.apps.length) {
+    try {
+        // 2. Setup credentials: Check if running on Render (ENV) or Local (File)
+        let serviceAccount;
+        
+        if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+            // PRODUCTION (Render): Parse the JSON string from Environment Variable
+            serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+        } else {
+            // DEVELOPMENT (Local): Load from file (ensure this file is in .gitignore!)
+            // You might need to adjust the path '../firebase-service-account.json' based on your folder structure
+            serviceAccount = require('../firebase-service-account.json'); 
+        }
+
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount)
+        });
+        
+        console.log("🔥 Firebase Admin initialized successfully");
+    } catch (error) {
+        console.error("❌ Firebase Admin initialization failed:", error.message);
+    }
+}
 // ==========================================
 // EMAIL CONFIGURATION
 // ==========================================
