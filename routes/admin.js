@@ -4,25 +4,26 @@ const User = require('../models/User');
 const Station = require('../models/Station');
 const PriceSuggestion = require('../models/PriceSuggestion'); 
 const nodemailer = require('nodemailer'); 
-
-// ==========================================
-// FIREBASE ADMIN CONFIGURATION (Add this block)
-// ==========================================
 const admin = require('firebase-admin');
 
-// 1. Check if Firebase is already initialized to prevent "App already exists" errors
+// ==========================================
+// 1. FIREBASE ADMIN CONFIGURATION (FIXED)
+// ==========================================
+// Check if Firebase is already initialized to prevent errors
 if (!admin.apps.length) {
     try {
-        // 2. Setup credentials: Check if running on Render (ENV) or Local (File)
         let serviceAccount;
         
+        // CHECK: Are we on Render? (Environment Variable)
         if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-            // PRODUCTION (Render): Parse the JSON string from Environment Variable
+            // Parse the JSON string from Render Environment Variable
             serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+            console.log("⚙️ Loading Firebase Admin from Environment Variable...");
         } else {
-            // DEVELOPMENT (Local): Load from file (ensure this file is in .gitignore!)
-            // You might need to adjust the path '../firebase-service-account.json' based on your folder structure
+            // Fallback: We are Local (File System)
+            // Ensure this file exists locally but is ignored by Git!
             serviceAccount = require('../firebase-service-account.json'); 
+            console.log("⚙️ Loading Firebase Admin from Local File...");
         }
 
         admin.initializeApp({
@@ -34,11 +35,15 @@ if (!admin.apps.length) {
         console.error("❌ Firebase Admin initialization failed:", error.message);
     }
 }
+
 // ==========================================
-// EMAIL CONFIGURATION
+// 2. EMAIL CONFIGURATION (FIXED)
 // ==========================================
+// Use explicit settings for better reliability on Render
 const transporter = nodemailer.createTransport({
-    service: 'gmail', // Change if using Outlook/Yahoo/etc.
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // Must be false for port 587
     auth: {
         user: process.env.EMAIL_USER, 
         pass: process.env.EMAIL_PASS 
@@ -60,13 +65,12 @@ const checkAdmin = (req, res, next) => {
 router.use(checkAdmin);
 
 // ==========================================
-// 1. ADMIN DASHBOARD
+// ADMIN DASHBOARD
 // ==========================================
 router.get('/', async (req, res) => {
     try {
         const userCount = await User.countDocuments();
         const stationCount = await Station.countDocuments();
-        // Count pending suggestions for the dashboard badge
         const pendingSuggestions = await PriceSuggestion.countDocuments({ status: 'pending' });
         
         const recentStations = await Station.find().sort({ createdAt: -1 }).limit(5).lean();
@@ -87,39 +91,31 @@ router.get('/', async (req, res) => {
 });
 
 // ==========================================
-// 2. PRICE SUGGESTIONS (CROWD CONSENSUS)
+// PRICE SUGGESTIONS (CROWD CONSENSUS)
 // ==========================================
 
-// GET: View Suggestions
 router.get('/price-suggestions', async (req, res) => {
     try {
-        const threshold = 3; // Threshold for enabling the "Approve" button
+        const threshold = 3; 
 
         const aggregatedSuggestions = await PriceSuggestion.aggregate([
-            // 1. Only look at pending suggestions
             { $match: { status: 'pending' } },
-
-            // 2. JOIN with Users collection to get Email & Username
             {
                 $lookup: {
-                    from: "users",          // MongoDB collection name for User model
+                    from: "users", 
                     localField: "userId",
                     foreignField: "_id",
                     as: "userInfo"
                 }
             },
-            { $unwind: "$userInfo" },       // Flatten the user array
-
-            // 3. Group by Station
+            { $unwind: "$userInfo" }, 
             {
                 $group: {
                     _id: "$stationDbId", 
                     stationDisplayId: { $first: "$stationId" }, 
                     userCount: { $sum: 1 }, 
                     avgPrice: { $avg: "$suggestedPrice" }, 
-                    // Keep IDs for the "Approve All" logic
                     suggestionIds: { $push: "$_id" },
-                    // Collect details for the dropdown list
                     details: { 
                         $push: {
                             username: "$userInfo.username",
@@ -129,8 +125,6 @@ router.get('/price-suggestions', async (req, res) => {
                     }
                 }
             },
-
-            // 4. Join with Station data for display info (City, Current Price)
             {
                 $lookup: {
                     from: "stations", 
@@ -140,8 +134,6 @@ router.get('/price-suggestions', async (req, res) => {
                 }
             },
             { $unwind: "$stationData" }, 
-
-            // 5. Sort by most requested (high consensus first)
             { $sort: { userCount: -1 } }
         ]);
 
@@ -158,31 +150,34 @@ router.get('/price-suggestions', async (req, res) => {
 });
 
 // POST: Approve (Update Station Price & Send Emails)
+// FIX: Using async iteration properly
 router.post('/price-suggestions/approve', async (req, res) => {
     try {
         const { stationDbId, finalPrice, suggestionIds } = req.body;
         const idsArray = JSON.parse(suggestionIds);
 
-        // 1. Get Old Price (for email context)
+        // 1. Get Old Price
         const station = await Station.findById(stationDbId);
         if (!station) throw new Error('Station not found');
         const oldPrice = station.costPerKWh;
 
-        // 2. Parse and Round New Price (Fix Floating Point Bug: 0.70000001 -> 0.70)
+        // 2. Update Station Price
         let newPrice = parseFloat(finalPrice);
         newPrice = Math.round((newPrice + Number.EPSILON) * 100) / 100;
 
-        // 3. Update Station in Database
         station.costPerKWh = newPrice;
         await station.save();
 
-        // 4. Find the suggestions to email the specific users
+        // 3. Find suggestions to email
         const approvedSuggestions = await PriceSuggestion.find({ _id: { $in: idsArray } })
             .populate('userId');
 
-        // 5. Send Email to Each User
+        // 4. Send Email to Each User (FIXED LOOP)
         if (process.env.EMAIL_USER) {
-            approvedSuggestions.forEach(async (suggestion) => {
+            console.log(`📧 Starting email notifications for ${approvedSuggestions.length} users...`);
+            
+            // USE for...of loop so 'await' actually works!
+            for (const suggestion of approvedSuggestions) {
                 if (suggestion.userId && suggestion.userId.email) {
                     const mailOptions = {
                         from: process.env.EMAIL_USER,
@@ -217,23 +212,22 @@ router.post('/price-suggestions/approve', async (req, res) => {
 
                     try {
                         await transporter.sendMail(mailOptions);
-                        console.log(`Email sent to ${suggestion.userId.email}`);
+                        console.log(`✅ Email sent to ${suggestion.userId.email}`);
                     } catch (err) {
-                        console.error('Email error:', err.message);
+                        console.error(`❌ Email failed for ${suggestion.userId.email}:`, err.message);
                     }
                 }
-            });
+            }
         } else {
             console.warn('⚠️ No EMAIL_USER in .env - Emails skipped.');
         }
 
-        // 6. Mark suggestions as approved
+        // 5. Update Statuses
         await PriceSuggestion.updateMany(
             { _id: { $in: idsArray } },
             { status: 'approved' }
         );
 
-        // 7. Cleanup other pending suggestions for this station
         await PriceSuggestion.updateMany(
             { stationDbId: stationDbId, status: 'pending' },
             { status: 'rejected' }
@@ -241,7 +235,7 @@ router.post('/price-suggestions/approve', async (req, res) => {
 
         res.redirect('/admin/price-suggestions');
     } catch (error) {
-        console.error(error);
+        console.error("Approve Route Error:", error);
         res.render('error', { message: 'Error approving price' });
     }
 });
@@ -264,9 +258,8 @@ router.post('/price-suggestions/reject', async (req, res) => {
 });
 
 // ==========================================
-// 3. USERS MANAGEMENT
+// USERS MANAGEMENT
 // ==========================================
-
 router.get('/users', async (req, res) => {
     try {
         const searchQuery = req.query.search;
@@ -352,9 +345,8 @@ router.post('/users/delete/:id', async (req, res) => {
 });
 
 // ==========================================
-// 4. STATIONS MANAGEMENT
+// STATIONS MANAGEMENT
 // ==========================================
-
 router.get('/stations', async (req, res) => {
     try {
         const searchQuery = req.query.search || '';
