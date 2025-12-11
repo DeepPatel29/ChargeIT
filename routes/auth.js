@@ -2,63 +2,19 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const router = express.Router();
-const crypto = require('crypto'); 
-const jwt = require('jsonwebtoken'); // 🚨 NEW: Import JWT for token handling
-const admin = require('firebase-admin'); // Import directly
+const crypto = require('crypto'); // Built-in Node module for generating random passwords
 
-// ==========================================
-// 1. ROBUST FIREBASE INITIALIZATION (FIXED FOR VERCEL)
-// ==========================================
-// This ensures Google Login works by loading credentials from ENV
-if (!admin.apps.length) {
-    try {
-        let serviceAccount;
-        if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-            // Vercel / Render (Production)
-            serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-        } else {
-            // Local Development (Fallback to local file)
-            serviceAccount = require('../firebase-service-account.json');
-        }
-
-        if (serviceAccount) {
-            admin.initializeApp({
-                credential: admin.credential.cert(serviceAccount)
-            });
-        }
-    } catch (error) {
-        console.error("❌ Firebase Init Error:", error.message);
-    }
+// Try to load firebase admin, handle error if not set up yet
+let admin;
+try {
+    admin = require('../config/firebase');
+} catch (error) {
+    console.warn("⚠️ Firebase Admin not initialized. Google Login will not work until 'config/firebase-service-account.json' is present.");
 }
-
-// ==========================================
-// 2. HELPER: Generate Token & Set Cookie
-// ==========================================
-const createTokenAndCookie = (user, res) => {
-    // Payload contains the data needed for user identification
-    const payload = {
-        id: user._id, 
-        username: user.username,
-        email: user.email,
-        isAdmin: user.isAdmin
-    };
-
-    const token = jwt.sign(payload, process.env.SESSION_SECRET || 'fallback-secret-key', {
-        expiresIn: '1d' // Token valid for 1 day
-    });
-
-    res.cookie('token', token, {
-        httpOnly: true, // Prevents client-side JS access (security)
-        secure: process.env.NODE_ENV === 'production', // HTTPS only on Vercel
-        maxAge: 24 * 60 * 60 * 1000 // 1 Day
-    });
-};
-
 
 // Registration form
 router.get('/register', (req, res) => {
-    // 🚨 JWT FIX: Check req.user
-    if (req.user) { 
+    if (req.session.user) {
         return res.redirect('/');
     }
     res.render('auth/register', {
@@ -97,6 +53,7 @@ router.post('/register', [
     try {
         const { username, email, password } = req.body;
 
+        // Check if user already exists
         const existingUser = await User.findOne({
             $or: [{ email }, { username }]
         });
@@ -109,12 +66,24 @@ router.post('/register', [
             });
         }
 
+        // Create new user
         const user = new User({ username, email, password });
         await user.save();
 
-        // 🚨 JWT FIX: Issue Token & Cookie
-        createTokenAndCookie(user, res);
-        res.redirect('/');
+        // Auto-login after registration
+        req.session.user = {
+            id: user._id,
+            username: user.username,
+            email: user.email,
+            isAdmin: user.isAdmin
+        };
+
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error:', err);
+            }
+            res.redirect('/');
+        });
 
     } catch (error) {
         console.error('Registration error:', error);
@@ -128,8 +97,7 @@ router.post('/register', [
 
 // Login form
 router.get('/login', (req, res) => {
-    // 🚨 JWT FIX: Check req.user
-    if (req.user) {
+    if (req.session.user) {
         return res.redirect('/');
     }
     res.render('auth/login', {
@@ -161,6 +129,7 @@ router.post('/login', [
     try {
         const { email, password } = req.body;
 
+        // Find user by email
         const user = await User.findOne({ email });
         if (!user) {
             return res.render('auth/login', {
@@ -170,6 +139,7 @@ router.post('/login', [
             });
         }
 
+        // Check password
         const isMatch = await user.comparePassword(password);
         if (!isMatch) {
             return res.render('auth/login', {
@@ -179,9 +149,20 @@ router.post('/login', [
             });
         }
 
-        // 🚨 JWT FIX: Issue Token & Cookie
-        createTokenAndCookie(user, res);
-        res.redirect('/');
+        // Set session
+        req.session.user = {
+            id: user._id,
+            username: user.username,
+            email: user.email,
+            isAdmin: user.isAdmin
+        };
+
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error:', err);
+            }
+            res.redirect('/');
+        });
 
     } catch (error) {
         console.error('Login error:', error);
@@ -197,21 +178,26 @@ router.post('/login', [
 router.post('/google', async (req, res) => {
     const { token } = req.body;
 
-    // Check if Firebase Admin SDK is initialized
-    if (!admin.apps.length) {
+    if (!admin) {
         return res.status(500).json({ success: false, message: 'Server configuration error: Firebase not initialized.' });
     }
 
     try {
+        // Verify the token sent from the client
         const decodedToken = await admin.auth().verifyIdToken(token);
-        const { email, name } = decodedToken;
+        const { email, name, uid } = decodedToken;
 
         let user = await User.findOne({ email });
 
         if (!user) {
+            // Create a new user if they don't exist
+            // We generate a random password to satisfy the model requirement
+            // The user won't know this password, but can login via Google
             const randomPassword = crypto.randomBytes(16).toString('hex');
             
+            // Generate a unique username if name is missing or taken
             let username = name || email.split('@')[0];
+            // Basic check to ensure unique username (simple implementation)
             const userExists = await User.findOne({ username });
             if (userExists) {
                 username += Math.floor(Math.random() * 1000);
@@ -226,9 +212,21 @@ router.post('/google', async (req, res) => {
             await user.save();
         }
 
-        // 🚨 JWT FIX: Issue Token & Cookie
-        createTokenAndCookie(user, res);
-        res.json({ success: true });
+        // Create Session
+        req.session.user = {
+            id: user._id,
+            username: user.username,
+            email: user.email,
+            isAdmin: user.isAdmin
+        };
+
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error:', err);
+                return res.json({ success: false, message: 'Session error' });
+            }
+            res.json({ success: true });
+        });
 
     } catch (error) {
         console.error('Google Auth Error:', error);
@@ -238,14 +236,12 @@ router.post('/google', async (req, res) => {
 
 // Logout
 router.post('/logout', (req, res) => {
-    // 🚨 JWT FIX: Clear the cookie
-    res.clearCookie('token');
-    res.redirect('/');
-});
-// Add GET logout fallback for safety
-router.get('/logout', (req, res) => {
-    res.clearCookie('token');
-    res.redirect('/');
+    req.session.destroy((err) => {
+        if (err) {
+            console.error('Logout error:', err);
+        }
+        res.redirect('/');
+    });
 });
 
 module.exports = router;

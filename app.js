@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const cookieParser = require('cookie-parser'); // NEW: Reads cookies
-const jwt = require('jsonwebtoken');           // NEW: Handles tokens
+const session = require('express-session');
+const MongoStore = require('connect-mongo');
 const { engine } = require('express-handlebars');
 const path = require('path');
 require('dotenv').config();
@@ -17,7 +17,6 @@ const connectDB = require('./config/database');
 let dbConnected = false;
 console.log('🔄 Initializing database connection...');
 
-// Connect immediately, but errors won't crash the build step
 connectDB().then(conn => {
     if (conn) {
         dbConnected = true;
@@ -60,6 +59,7 @@ app.engine('hbs', engine({
             } catch (e) { return 'Invalid Date'; }
         },
         json: (context) => JSON.stringify(context, null, 2),
+        // NEW HELPER: Formats numbers to fixed decimal places (e.g., price)
         toFixed: (num, digits) => {
             if (typeof num !== 'number') return num;
             return num.toFixed(digits);
@@ -81,40 +81,47 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ==========================================
-// 🔐 JWT & COOKIE CONFIGURATION
-// ==========================================
+// --- SESSION CONFIGURATION ---
+let sessionStore;
+const isProduction = process.env.NODE_ENV === 'production';
 
-// 1. Add Cookie Parser (Reads the 'token' cookie from browser)
-app.use(cookieParser());
-
-// 2. Authentication Middleware (Runs on EVERY page load)
-app.use((req, res, next) => {
-    const token = req.cookies.token;
-
-    // Default: No user
-    req.user = null;
-    res.locals.user = null;
-
-    if (token) {
-        try {
-            // Verify token. Use a fallback secret if .env is missing locally
-            const decoded = jwt.verify(token, process.env.SESSION_SECRET || 'fallback-secret-key');
-            
-            // Success! Attach user data to Request and Locals (for Handlebars)
-            req.user = decoded; 
-            res.locals.user = decoded; 
-        } catch (err) {
-            // Token is invalid or expired -> Clear it
-            res.clearCookie('token');
-        }
+if (process.env.MONGO_URI) {
+    try {
+        sessionStore = MongoStore.create({
+            mongoUrl: process.env.MONGO_URI,
+            collectionName: 'sessions',
+            ttl: 24 * 60 * 60,
+            autoRemove: 'native'
+        });
+        console.log("✅ Session Store: MongoDB");
+    } catch (err) {
+        console.error("⚠️ Failed to init MongoStore:", err.message);
+        sessionStore = new session.MemoryStore();
+        console.log("⚠️ Session Store: Memory (Fallback)");
     }
+} else {
+    console.warn("⚠️ MONGO_URI not found. Using MemoryStore.");
+    sessionStore = new session.MemoryStore();
+}
 
-    // Global variables for Handlebars
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'chargeit-fallback-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    store: sessionStore,
+    cookie: {
+        secure: isProduction,
+        maxAge: 24 * 60 * 60 * 1000,
+        httpOnly: true,
+        sameSite: isProduction ? 'none' : 'lax'
+    }
+}));
+
+app.use((req, res, next) => {
+    res.locals.user = req.session.user || null;
     res.locals.dbConnected = dbConnected;
     res.locals.NODE_ENV = process.env.NODE_ENV || 'development';
     res.locals.appName = 'ChargeIT';
-    
     next();
 });
 
@@ -132,17 +139,9 @@ app.use((req, res) => {
     });
 });
 
-// ==========================================
-// 🚀 VERCEL DEPLOYMENT CONFIGURATION
-// ==========================================
 const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`🚀 ChargeIT Server Started on port ${PORT}`);
+});
 
-// Only listen if running locally. Vercel handles this automatically.
-if (require.main === module) {
-    app.listen(PORT, () => {
-        console.log(`🚀 ChargeIT Server Started on port ${PORT}`);
-    });
-}
-
-// Export the app for Vercel Serverless Functions
 module.exports = app;

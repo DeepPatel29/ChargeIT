@@ -3,58 +3,22 @@ const router = express.Router();
 const User = require('../models/User');
 const Station = require('../models/Station');
 const PriceSuggestion = require('../models/PriceSuggestion'); 
-const nodemailer = require('nodemailer'); 
-const admin = require('firebase-admin');
+const nodemailer = require('nodemailer'); // Required for email notifications
 
 // ==========================================
-// 1. FIREBASE ADMIN CONFIGURATION
-// ==========================================
-if (!admin.apps.length) {
-    try {
-        let serviceAccount;
-        
-        // CHECK: Are we on Render? (Environment Variable)
-        if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-            // Parse the JSON string from Render Environment Variable
-            serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-            console.log("⚙️ Loading Firebase Admin from Environment Variable...");
-        } else {
-            // Fallback: We are Local (File System)
-            serviceAccount = require('../firebase-service-account.json'); 
-            console.log("⚙️ Loading Firebase Admin from Local File...");
-        }
-
-        admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount)
-        });
-        
-        console.log("🔥 Firebase Admin initialized successfully");
-    } catch (error) {
-        console.error("❌ Firebase Admin initialization failed:", error.message);
-    }
-}
-
-// ==========================================
-// 2. EMAIL CONFIGURATION
+// EMAIL CONFIGURATION
 // ==========================================
 const transporter = nodemailer.createTransport({
-    host: 'smtp-relay.brevo.com',  // Brevo's SMTP server
-    port: 587,                     // Standard Port
-    secure: false,                 // Must be false for 587
+    service: 'gmail', // Change if using Outlook/Yahoo/etc.
     auth: {
-        user: process.env.EMAIL_USER, // Your Brevo Login Email
-        pass: process.env.EMAIL_PASS  // Your Brevo SMTP Key (xsmtpsib-...)
-    },
-    // Forces IPv4 to prevent Google timeouts on Vercel/Render
-    family: 4 
+        user: process.env.EMAIL_USER, 
+        pass: process.env.EMAIL_PASS 
+    }
 });
 
-// ==========================================
-// 3. ADMIN MIDDLEWARE (UPDATED FOR JWT)
-// ==========================================
+// Middleware to check if user is Admin
 const checkAdmin = (req, res, next) => {
-    // 🚨 JWT CHANGE: Check 'req.user' instead of 'req.session.user'
-    if (req.user && req.user.isAdmin) {
+    if (req.session.user && req.session.user.isAdmin) {
         return next();
     }
     res.status(403).render('error', { 
@@ -67,12 +31,13 @@ const checkAdmin = (req, res, next) => {
 router.use(checkAdmin);
 
 // ==========================================
-// ADMIN DASHBOARD
+// 1. ADMIN DASHBOARD
 // ==========================================
 router.get('/', async (req, res) => {
     try {
         const userCount = await User.countDocuments();
         const stationCount = await Station.countDocuments();
+        // Count pending suggestions for the dashboard badge
         const pendingSuggestions = await PriceSuggestion.countDocuments({ status: 'pending' });
         
         const recentStations = await Station.find().sort({ createdAt: -1 }).limit(5).lean();
@@ -93,31 +58,39 @@ router.get('/', async (req, res) => {
 });
 
 // ==========================================
-// PRICE SUGGESTIONS (CROWD CONSENSUS)
+// 2. PRICE SUGGESTIONS (CROWD CONSENSUS)
 // ==========================================
 
+// GET: View Suggestions
 router.get('/price-suggestions', async (req, res) => {
     try {
-        const threshold = 3; 
+        const threshold = 3; // Threshold for enabling the "Approve" button
 
         const aggregatedSuggestions = await PriceSuggestion.aggregate([
+            // 1. Only look at pending suggestions
             { $match: { status: 'pending' } },
+
+            // 2. JOIN with Users collection to get Email & Username
             {
                 $lookup: {
-                    from: "users", 
+                    from: "users",          // MongoDB collection name for User model
                     localField: "userId",
                     foreignField: "_id",
                     as: "userInfo"
                 }
             },
-            { $unwind: "$userInfo" }, 
+            { $unwind: "$userInfo" },       // Flatten the user array
+
+            // 3. Group by Station
             {
                 $group: {
                     _id: "$stationDbId", 
                     stationDisplayId: { $first: "$stationId" }, 
                     userCount: { $sum: 1 }, 
                     avgPrice: { $avg: "$suggestedPrice" }, 
+                    // Keep IDs for the "Approve All" logic
                     suggestionIds: { $push: "$_id" },
+                    // Collect details for the dropdown list
                     details: { 
                         $push: {
                             username: "$userInfo.username",
@@ -127,6 +100,8 @@ router.get('/price-suggestions', async (req, res) => {
                     }
                 }
             },
+
+            // 4. Join with Station data for display info (City, Current Price)
             {
                 $lookup: {
                     from: "stations", 
@@ -136,6 +111,8 @@ router.get('/price-suggestions', async (req, res) => {
                 }
             },
             { $unwind: "$stationData" }, 
+
+            // 5. Sort by most requested (high consensus first)
             { $sort: { userCount: -1 } }
         ]);
 
@@ -157,29 +134,26 @@ router.post('/price-suggestions/approve', async (req, res) => {
         const { stationDbId, finalPrice, suggestionIds } = req.body;
         const idsArray = JSON.parse(suggestionIds);
 
-        // 1. Get Old Price
+        // 1. Get Old Price (for email context)
         const station = await Station.findById(stationDbId);
         if (!station) throw new Error('Station not found');
         const oldPrice = station.costPerKWh;
 
-        // 2. Update Station Price
+        // 2. Parse and Round New Price (Fix Floating Point Bug: 0.70000001 -> 0.70)
         let newPrice = parseFloat(finalPrice);
         newPrice = Math.round((newPrice + Number.EPSILON) * 100) / 100;
 
+        // 3. Update Station in Database
         station.costPerKWh = newPrice;
         await station.save();
 
-        // 3. Find suggestions to email
+        // 4. Find the suggestions to email the specific users
         const approvedSuggestions = await PriceSuggestion.find({ _id: { $in: idsArray } })
             .populate('userId');
 
-        // 4. Send Email to Each User (BACKGROUND MODE)
+        // 5. Send Email to Each User
         if (process.env.EMAIL_USER) {
-            console.log(`📧 Queuing emails for ${approvedSuggestions.length} users...`);
-            
-            // Loop through users but DO NOT 'await' the email sending.
-            // This prevents the page from loading forever.
-            approvedSuggestions.forEach(suggestion => {
+            approvedSuggestions.forEach(async (suggestion) => {
                 if (suggestion.userId && suggestion.userId.email) {
                     const mailOptions = {
                         from: process.env.EMAIL_USER,
@@ -212,32 +186,33 @@ router.post('/price-suggestions/approve', async (req, res) => {
                         `
                     };
 
-                    // Send in background (Fire and Forget)
-                    transporter.sendMail(mailOptions)
-                        .then(() => console.log(`✅ Background email sent to ${suggestion.userId.email}`))
-                        .catch(err => console.error(`❌ Background email failed for ${suggestion.userId.email}:`, err.message));
+                    try {
+                        await transporter.sendMail(mailOptions);
+                        console.log(`Email sent to ${suggestion.userId.email}`);
+                    } catch (err) {
+                        console.error('Email error:', err.message);
+                    }
                 }
             });
         } else {
             console.warn('⚠️ No EMAIL_USER in .env - Emails skipped.');
         }
 
-        // 5. Update Statuses
+        // 6. Mark suggestions as approved
         await PriceSuggestion.updateMany(
             { _id: { $in: idsArray } },
             { status: 'approved' }
         );
 
+        // 7. Cleanup other pending suggestions for this station
         await PriceSuggestion.updateMany(
             { stationDbId: stationDbId, status: 'pending' },
             { status: 'rejected' }
         );
 
-        // 6. Redirect Immediately (User does not wait for emails)
         res.redirect('/admin/price-suggestions');
-
     } catch (error) {
-        console.error("Approve Route Error:", error);
+        console.error(error);
         res.render('error', { message: 'Error approving price' });
     }
 });
@@ -260,8 +235,9 @@ router.post('/price-suggestions/reject', async (req, res) => {
 });
 
 // ==========================================
-// USERS MANAGEMENT
+// 3. USERS MANAGEMENT
 // ==========================================
+
 router.get('/users', async (req, res) => {
     try {
         const searchQuery = req.query.search;
@@ -347,8 +323,9 @@ router.post('/users/delete/:id', async (req, res) => {
 });
 
 // ==========================================
-// STATIONS MANAGEMENT
+// 4. STATIONS MANAGEMENT
 // ==========================================
+
 router.get('/stations', async (req, res) => {
     try {
         const searchQuery = req.query.search || '';
