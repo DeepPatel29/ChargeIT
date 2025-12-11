@@ -35,24 +35,26 @@ if (!admin.apps.length) {
 }
 
 // ==========================================
-// 2. EMAIL CONFIGURATION (FINAL FIX)
+// 2. EMAIL CONFIGURATION
 // ==========================================
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 465,      // Standard TLS port
-    secure: true,  // Must be false for 587
+    secure: true,   // Must be true for 465
     auth: {
         user: process.env.EMAIL_USER, 
         pass: process.env.EMAIL_PASS 
     },
-    // 🚨 CRITICAL FIX: Forces IPv4. 
-    // Fixes the "Connection Timeout" on Render/Google.
+    // Forces IPv4 to prevent Google timeouts on Vercel/Render
     family: 4 
 });
 
-// Middleware to check if user is Admin
+// ==========================================
+// 3. ADMIN MIDDLEWARE (UPDATED FOR JWT)
+// ==========================================
 const checkAdmin = (req, res, next) => {
-    if (req.session.user && req.session.user.isAdmin) {
+    // 🚨 JWT CHANGE: Check 'req.user' instead of 'req.session.user'
+    if (req.user && req.user.isAdmin) {
         return next();
     }
     res.status(403).render('error', { 

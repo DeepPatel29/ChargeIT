@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const session = require('express-session');
-const MongoStore = require('connect-mongo');
+const cookieParser = require('cookie-parser'); // NEW: Reads cookies
+const jwt = require('jsonwebtoken');           // NEW: Handles tokens
 const { engine } = require('express-handlebars');
 const path = require('path');
 require('dotenv').config();
@@ -81,50 +81,40 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- SESSION CONFIGURATION ---
-let sessionStore;
-const isProduction = process.env.NODE_ENV === 'production';
+// ==========================================
+// 🔐 JWT & COOKIE CONFIGURATION
+// ==========================================
 
-// Critical for Vercel: Persist sessions in MongoDB
-if (process.env.MONGO_URI) {
-    try {
-        sessionStore = MongoStore.create({
-            mongoUrl: process.env.MONGO_URI,
-            collectionName: 'sessions',
-            ttl: 24 * 60 * 60,
-            autoRemove: 'native'
-        });
-        console.log("✅ Session Store: MongoDB");
-    } catch (err) {
-        console.error("⚠️ Failed to init MongoStore:", err.message);
-        sessionStore = new session.MemoryStore();
-    }
-} else {
-    console.warn("⚠️ MONGO_URI not found. Using MemoryStore.");
-    sessionStore = new session.MemoryStore();
-}
+// 1. Add Cookie Parser (Reads the 'token' cookie from browser)
+app.use(cookieParser());
 
-app.use(session({
-    secret: process.env.SESSION_SECRET || 'chargeit-fallback-secret-key',
-    resave: false,
-    saveUninitialized: false,
-    store: sessionStore,
-    cookie: {
-        // Vercel serves over HTTPS, so we need secure: true in production
-        secure: isProduction, 
-        maxAge: 24 * 60 * 60 * 1000,
-        httpOnly: true,
-        // 'none' is required for cross-site cookies if your frontend/backend are separate,
-        // but for Vercel monorepos 'lax' is usually safer/better.
-        sameSite: isProduction ? 'lax' : 'lax' 
-    }
-}));
-
+// 2. Authentication Middleware (Runs on EVERY page load)
 app.use((req, res, next) => {
-    res.locals.user = req.session.user || null;
+    const token = req.cookies.token;
+
+    // Default: No user
+    req.user = null;
+    res.locals.user = null;
+
+    if (token) {
+        try {
+            // Verify token. Use a fallback secret if .env is missing locally
+            const decoded = jwt.verify(token, process.env.SESSION_SECRET || 'fallback-secret-key');
+            
+            // Success! Attach user data to Request and Locals (for Handlebars)
+            req.user = decoded; 
+            res.locals.user = decoded; 
+        } catch (err) {
+            // Token is invalid or expired -> Clear it
+            res.clearCookie('token');
+        }
+    }
+
+    // Global variables for Handlebars
     res.locals.dbConnected = dbConnected;
     res.locals.NODE_ENV = process.env.NODE_ENV || 'development';
     res.locals.appName = 'ChargeIT';
+    
     next();
 });
 
@@ -145,16 +135,14 @@ app.use((req, res) => {
 // ==========================================
 // 🚀 VERCEL DEPLOYMENT CONFIGURATION
 // ==========================================
-// We ONLY listen to the port if we are running locally (node app.js).
-// Vercel serverless functions export the app instead of listening.
-
 const PORT = process.env.PORT || 3000;
 
+// Only listen if running locally. Vercel handles this automatically.
 if (require.main === module) {
     app.listen(PORT, () => {
         console.log(`🚀 ChargeIT Server Started on port ${PORT}`);
     });
 }
 
-// Export the app for Vercel
+// Export the app for Vercel Serverless Functions
 module.exports = app;
