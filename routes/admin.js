@@ -38,7 +38,7 @@ if (!admin.apps.length) {
 // 2. EMAIL CONFIGURATION (FINAL FIX)
 // ==========================================
 const transporter = nodemailer.createTransport({
-    host: 'smtp-relay.brevo.com',
+    host: 'smtp.gmail.com',
     port: 465,      // Standard TLS port
     secure: true,  // Must be false for 587
     auth: {
