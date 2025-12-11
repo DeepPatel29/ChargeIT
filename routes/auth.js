@@ -2,29 +2,23 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const router = express.Router();
-const crypto = require('crypto');
-const jwt = require('jsonwebtoken'); // Ensure this is installed
+const crypto = require('crypto'); 
+const jwt = require('jsonwebtoken'); // 🚨 NEW: Import JWT for token handling
 const admin = require('firebase-admin'); // Import directly
 
 // ==========================================
-// 1. ROBUST FIREBASE INITIALIZATION
+// 1. ROBUST FIREBASE INITIALIZATION (FIXED FOR VERCEL)
 // ==========================================
-// This fixes the "Firebase not initialized" error on Vercel
+// This ensures Google Login works by loading credentials from ENV
 if (!admin.apps.length) {
     try {
         let serviceAccount;
         if (process.env.FIREBASE_SERVICE_ACCOUNT) {
             // Vercel / Render (Production)
             serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-            console.log("✅ Auth Route: Loaded Firebase from Environment Variable");
         } else {
-            // Local Development
-            try {
-                serviceAccount = require('../config/firebase-service-account.json');
-                console.log("✅ Auth Route: Loaded Firebase from Local File");
-            } catch (e) {
-                console.warn("⚠️ Local firebase-service-account.json not found.");
-            }
+            // Local Development (Fallback to local file)
+            serviceAccount = require('../firebase-service-account.json');
         }
 
         if (serviceAccount) {
@@ -37,82 +31,175 @@ if (!admin.apps.length) {
     }
 }
 
-// Helper to generate Token & Cookie (reused from your previous setup)
+// ==========================================
+// 2. HELPER: Generate Token & Set Cookie
+// ==========================================
 const createTokenAndCookie = (user, res) => {
+    // Payload contains the data needed for user identification
     const payload = {
         id: user._id, 
         username: user.username,
         email: user.email,
         isAdmin: user.isAdmin
     };
-    const token = jwt.sign(payload, process.env.SESSION_SECRET || 'fallback-secret', { expiresIn: '1d' });
+
+    const token = jwt.sign(payload, process.env.SESSION_SECRET || 'fallback-secret-key', {
+        expiresIn: '1d' // Token valid for 1 day
+    });
+
     res.cookie('token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 24 * 60 * 60 * 1000
+        httpOnly: true, // Prevents client-side JS access (security)
+        secure: process.env.NODE_ENV === 'production', // HTTPS only on Vercel
+        maxAge: 24 * 60 * 60 * 1000 // 1 Day
     });
 };
 
-// Registration Routes
+
+// Registration form
 router.get('/register', (req, res) => {
-    if (req.user) return res.redirect('/');
-    res.render('auth/register', { title: 'Register - ChargeIT', errors: [] });
+    // 🚨 JWT FIX: Check req.user
+    if (req.user) { 
+        return res.redirect('/');
+    }
+    res.render('auth/register', {
+        title: 'Register - ChargeIT',
+        errors: []
+    });
 });
 
+// Registration processing
 router.post('/register', [
-    body('username').trim().isLength({ min: 3, max: 30 }).withMessage('Username must be 3-30 characters'),
-    body('email').isEmail().withMessage('Valid email required').normalizeEmail(),
-    body('password').isLength({ min: 6 }).withMessage('Password must be 6+ chars'),
-    body('confirmPassword').custom((value, { req }) => value === req.body.password).withMessage('Passwords mismatch')
+    body('username')
+        .isLength({ min: 3, max: 30 })
+        .withMessage('Username must be 3-30 characters')
+        .trim(),
+    body('email')
+        .isEmail()
+        .withMessage('Please enter a valid email')
+        .normalizeEmail(),
+    body('password')
+        .isLength({ min: 6 })
+        .withMessage('Password must be at least 6 characters'),
+    body('confirmPassword')
+        .custom((value, { req }) => value === req.body.password)
+        .withMessage('Passwords do not match')
 ], async (req, res) => {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.render('auth/register', { title: 'Register', errors: errors.array(), formData: req.body });
+
+    if (!errors.isEmpty()) {
+        return res.render('auth/register', {
+            title: 'Register - ChargeIT',
+            errors: errors.array(),
+            formData: req.body
+        });
+    }
 
     try {
         const { username, email, password } = req.body;
-        const existing = await User.findOne({ $or: [{ email }, { username }] });
-        if (existing) return res.render('auth/register', { title: 'Register', errors: [{ msg: 'User already exists' }], formData: req.body });
+
+        const existingUser = await User.findOne({
+            $or: [{ email }, { username }]
+        });
+
+        if (existingUser) {
+            return res.render('auth/register', {
+                title: 'Register - ChargeIT',
+                errors: [{ msg: 'User with this email or username already exists' }],
+                formData: req.body
+            });
+        }
 
         const user = new User({ username, email, password });
         await user.save();
+
+        // 🚨 JWT FIX: Issue Token & Cookie
         createTokenAndCookie(user, res);
         res.redirect('/');
+
     } catch (error) {
-        console.error(error);
-        res.render('auth/register', { title: 'Register', errors: [{ msg: 'Server error' }], formData: req.body });
+        console.error('Registration error:', error);
+        res.render('auth/register', {
+            title: 'Register - ChargeIT',
+            errors: [{ msg: 'Registration failed. Please try again.' }],
+            formData: req.body
+        });
     }
 });
 
-// Login Routes
+// Login form
 router.get('/login', (req, res) => {
-    if (req.user) return res.redirect('/');
-    res.render('auth/login', { title: 'Login - ChargeIT', errors: [] });
+    // 🚨 JWT FIX: Check req.user
+    if (req.user) {
+        return res.redirect('/');
+    }
+    res.render('auth/login', {
+        title: 'Login - ChargeIT',
+        errors: []
+    });
 });
 
-router.post('/login', async (req, res) => {
+// Login processing
+router.post('/login', [
+    body('email')
+        .isEmail()
+        .withMessage('Please enter a valid email')
+        .normalizeEmail(),
+    body('password')
+        .notEmpty()
+        .withMessage('Password is required')
+], async (req, res) => {
+    const errors = validationResult(req);
+
+    if (!errors.isEmpty()) {
+        return res.render('auth/login', {
+            title: 'Login - ChargeIT',
+            errors: errors.array(),
+            formData: req.body
+        });
+    }
+
     try {
         const { email, password } = req.body;
+
         const user = await User.findOne({ email });
-        
-        if (!user || !(await user.comparePassword(password))) {
-            return res.render('auth/login', { title: 'Login', errors: [{ msg: 'Invalid credentials' }], formData: req.body });
+        if (!user) {
+            return res.render('auth/login', {
+                title: 'Login - ChargeIT',
+                errors: [{ msg: 'Invalid email or password' }],
+                formData: req.body
+            });
         }
-        
+
+        const isMatch = await user.comparePassword(password);
+        if (!isMatch) {
+            return res.render('auth/login', {
+                title: 'Login - ChargeIT',
+                errors: [{ msg: 'Invalid email or password' }],
+                formData: req.body
+            });
+        }
+
+        // 🚨 JWT FIX: Issue Token & Cookie
         createTokenAndCookie(user, res);
         res.redirect('/');
+
     } catch (error) {
-        console.error(error);
-        res.render('auth/login', { title: 'Login', errors: [{ msg: 'Login failed' }] });
+        console.error('Login error:', error);
+        res.render('auth/login', {
+            title: 'Login - ChargeIT',
+            errors: [{ msg: 'Login failed. Please try again.' }],
+            formData: req.body
+        });
     }
 });
 
-// Google Login Route (Fixed)
+// Google Login Processing
 router.post('/google', async (req, res) => {
     const { token } = req.body;
-    
-    // Check if admin is actually initialized
+
+    // Check if Firebase Admin SDK is initialized
     if (!admin.apps.length) {
-        return res.status(500).json({ success: false, message: 'Firebase not configured on server.' });
+        return res.status(500).json({ success: false, message: 'Server configuration error: Firebase not initialized.' });
     }
 
     try {
@@ -123,28 +210,40 @@ router.post('/google', async (req, res) => {
 
         if (!user) {
             const randomPassword = crypto.randomBytes(16).toString('hex');
+            
             let username = name || email.split('@')[0];
-            if (await User.findOne({ username })) username += Math.floor(Math.random() * 1000);
+            const userExists = await User.findOne({ username });
+            if (userExists) {
+                username += Math.floor(Math.random() * 1000);
+            }
 
-            user = new User({ username, email, password: randomPassword });
+            user = new User({
+                username: username,
+                email: email,
+                password: randomPassword,
+                isAdmin: false
+            });
             await user.save();
         }
 
+        // 🚨 JWT FIX: Issue Token & Cookie
         createTokenAndCookie(user, res);
         res.json({ success: true });
 
     } catch (error) {
         console.error('Google Auth Error:', error);
-        res.status(401).json({ success: false, message: 'Invalid Google Token' });
+        res.status(401).json({ success: false, message: 'Invalid token' });
     }
 });
 
 // Logout
-router.get('/logout', (req, res) => {
+router.post('/logout', (req, res) => {
+    // 🚨 JWT FIX: Clear the cookie
     res.clearCookie('token');
     res.redirect('/');
 });
-router.post('/logout', (req, res) => {
+// Add GET logout fallback for safety
+router.get('/logout', (req, res) => {
     res.clearCookie('token');
     res.redirect('/');
 });
