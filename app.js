@@ -17,6 +17,7 @@ const connectDB = require('./config/database');
 let dbConnected = false;
 console.log('🔄 Initializing database connection...');
 
+// Connect immediately, but errors won't crash the build step
 connectDB().then(conn => {
     if (conn) {
         dbConnected = true;
@@ -59,7 +60,6 @@ app.engine('hbs', engine({
             } catch (e) { return 'Invalid Date'; }
         },
         json: (context) => JSON.stringify(context, null, 2),
-        // NEW HELPER: Formats numbers to fixed decimal places (e.g., price)
         toFixed: (num, digits) => {
             if (typeof num !== 'number') return num;
             return num.toFixed(digits);
@@ -85,6 +85,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 let sessionStore;
 const isProduction = process.env.NODE_ENV === 'production';
 
+// Critical for Vercel: Persist sessions in MongoDB
 if (process.env.MONGO_URI) {
     try {
         sessionStore = MongoStore.create({
@@ -97,7 +98,6 @@ if (process.env.MONGO_URI) {
     } catch (err) {
         console.error("⚠️ Failed to init MongoStore:", err.message);
         sessionStore = new session.MemoryStore();
-        console.log("⚠️ Session Store: Memory (Fallback)");
     }
 } else {
     console.warn("⚠️ MONGO_URI not found. Using MemoryStore.");
@@ -110,10 +110,13 @@ app.use(session({
     saveUninitialized: false,
     store: sessionStore,
     cookie: {
-        secure: isProduction,
+        // Vercel serves over HTTPS, so we need secure: true in production
+        secure: isProduction, 
         maxAge: 24 * 60 * 60 * 1000,
         httpOnly: true,
-        sameSite: isProduction ? 'none' : 'lax'
+        // 'none' is required for cross-site cookies if your frontend/backend are separate,
+        // but for Vercel monorepos 'lax' is usually safer/better.
+        sameSite: isProduction ? 'lax' : 'lax' 
     }
 }));
 
@@ -139,9 +142,19 @@ app.use((req, res) => {
     });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`🚀 ChargeIT Server Started on port ${PORT}`);
-});
+// ==========================================
+// 🚀 VERCEL DEPLOYMENT CONFIGURATION
+// ==========================================
+// We ONLY listen to the port if we are running locally (node app.js).
+// Vercel serverless functions export the app instead of listening.
 
+const PORT = process.env.PORT || 3000;
+
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`🚀 ChargeIT Server Started on port ${PORT}`);
+    });
+}
+
+// Export the app for Vercel
 module.exports = app;
