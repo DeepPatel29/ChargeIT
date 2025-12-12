@@ -5,11 +5,9 @@ const Station = require('../models/Station');
 const PriceSuggestion = require('../models/PriceSuggestion'); 
 const nodemailer = require('nodemailer'); // Required for email notifications
 
-// ==========================================
 // EMAIL CONFIGURATION
-// ==========================================
 const transporter = nodemailer.createTransport({
-    service: 'gmail', // Change if using Outlook/Yahoo/etc.
+    service: 'gmail',
     auth: {
         user: process.env.EMAIL_USER, 
         pass: process.env.EMAIL_PASS 
@@ -30,9 +28,7 @@ const checkAdmin = (req, res, next) => {
 // Protect all admin routes
 router.use(checkAdmin);
 
-// ==========================================
 // 1. ADMIN DASHBOARD
-// ==========================================
 router.get('/', async (req, res) => {
     try {
         const userCount = await User.countDocuments();
@@ -57,9 +53,7 @@ router.get('/', async (req, res) => {
     }
 });
 
-// ==========================================
 // 2. PRICE SUGGESTIONS (CROWD CONSENSUS)
-// ==========================================
 
 // GET: View Suggestions
 router.get('/price-suggestions', async (req, res) => {
@@ -139,7 +133,6 @@ router.post('/price-suggestions/approve', async (req, res) => {
         if (!station) throw new Error('Station not found');
         const oldPrice = station.costPerKWh;
 
-        // 2. Parse and Round New Price (Fix Floating Point Bug: 0.70000001 -> 0.70)
         let newPrice = parseFloat(finalPrice);
         newPrice = Math.round((newPrice + Number.EPSILON) * 100) / 100;
 
@@ -234,9 +227,7 @@ router.post('/price-suggestions/reject', async (req, res) => {
     }
 });
 
-// ==========================================
 // 3. USERS MANAGEMENT
-// ==========================================
 
 router.get('/users', async (req, res) => {
     try {
@@ -322,9 +313,7 @@ router.post('/users/delete/:id', async (req, res) => {
     }
 });
 
-// ==========================================
 // 4. STATIONS MANAGEMENT
-// ==========================================
 
 router.get('/stations', async (req, res) => {
     try {

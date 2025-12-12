@@ -39,7 +39,7 @@ router.get('/', async (req, res) => {
 
         const totalPages = Math.ceil(totalStations / perPage);
 
-        // --- SMART PAGINATION LOGIC ---
+        // SMART PAGINATION LOGIC
         let startPage = Math.max(1, page - 2);
         let endPage = Math.min(totalPages, page + 2);
 
@@ -208,7 +208,7 @@ router.post('/:id/review', async (req, res) => {
     }
 });
 
-// --- NEW: Handle Price Suggestion Submission ---
+// Handle Price Suggestion Submission
 router.post('/suggest-price', async (req, res) => {
     // 1. Check Login
     if (!req.session.user) {
@@ -383,7 +383,7 @@ router.get('/api/stations', async (req, res) => {
     }
 });
 
-// --- HELPER FUNCTIONS ---
+// HELPER FUNCTIONS
 
 function filterSampleStations(query) {
     const { city, country, chargerType, minRating } = query;

@@ -8,7 +8,7 @@ require('dotenv').config();
 
 const app = express();
 
-// --- Trust Proxy (Required for Vercel/Render) ---
+// Trust Proxy
 app.set('trust proxy', 1);
 
 // Database connection
@@ -20,12 +20,12 @@ console.log('🔄 Initializing database connection...');
 connectDB().then(conn => {
     if (conn) {
         dbConnected = true;
-        console.log('✅ Database connection ready');
+        console.log('Database connection ready');
     } else {
-        console.log('⚠️  Running with in-memory data');
+        console.log('Running with in-memory data');
     }
 }).catch(err => {
-    console.log('❌ Database connection failed:', err.message);
+    console.log('Database connection failed:', err.message);
 });
 
 app.locals.dbConnected = () => dbConnected;
@@ -59,7 +59,7 @@ app.engine('hbs', engine({
             } catch (e) { return 'Invalid Date'; }
         },
         json: (context) => JSON.stringify(context, null, 2),
-        // NEW HELPER: Formats numbers to fixed decimal places (e.g., price)
+        // Formats numbers to fixed decimal places
         toFixed: (num, digits) => {
             if (typeof num !== 'number') return num;
             return num.toFixed(digits);
@@ -81,7 +81,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- SESSION CONFIGURATION ---
+// SESSION CONFIGURATION
 let sessionStore;
 const isProduction = process.env.NODE_ENV === 'production';
 

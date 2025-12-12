@@ -15,7 +15,6 @@ const importData = async () => {
         await mongoose.connect(process.env.MONGODB_URI);
         console.log('Connected to MongoDB');
 
-        // CORRECT PATH: always look in project root, not relative to this script
         const jsonPath = path.resolve(process.cwd(), 'realistic_ev_charging_stations.json');
 
         if (!fs.existsSync(jsonPath)) {
@@ -30,7 +29,6 @@ const importData = async () => {
         await Station.deleteMany({});
         console.log('Cleared old stations');
 
-        // Import in batches (safe + fast)
         const batchSize = 1000;
         for (let i = 0; i < sampleData.length; i += batchSize) {
             const batch = sampleData.slice(i, i + batchSize);

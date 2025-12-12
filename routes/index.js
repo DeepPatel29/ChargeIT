@@ -1,6 +1,6 @@
 const express = require('express');
 const Station = require('../models/Station');
-const User = require('../models/User'); // Required to fetch user favorites
+const User = require('../models/User');
 const router = express.Router();
 
 // Home page
@@ -66,7 +66,7 @@ router.get('/about', (req, res) => {
     });
 });
 
-// NEW: Favorites Page Route
+// Favorites Page Route
 router.get('/favorites', async (req, res) => {
     // 1. Check if user is logged in
     if (!req.session.user) {
@@ -87,7 +87,7 @@ router.get('/favorites', async (req, res) => {
                 stations = user.favoriteStations;
             }
         } else {
-            dbError = true; // Favorites require DB connection
+            dbError = true;
         }
 
         res.render('favorites', {
@@ -101,7 +101,7 @@ router.get('/favorites', async (req, res) => {
     }
 });
 
-// NEW: API Route to Add/Remove Favorites
+// API Route to Add/Remove Favorites
 router.post('/api/favorites', async (req, res) => {
     if (!req.session.user) {
         return res.status(401).json({ success: false, message: 'Unauthorized' });

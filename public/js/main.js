@@ -1,9 +1,7 @@
 // ChargeIT Main JavaScript
 document.addEventListener('DOMContentLoaded', function () {
 
-    // ==========================================
     // 1. DARK MODE TOGGLE LOGIC
-    // ==========================================
     const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
     const currentTheme = localStorage.getItem('theme');
 
@@ -33,10 +31,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
-
-    // ==========================================
-    // 2. EXISTING APP LOGIC
-    // ==========================================
 
     // Initialize tooltips
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -82,9 +76,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // ==========================================
-    // 3. PRICE SUGGESTION LOGIC (FIXED)
-    // ==========================================
     const priceForm = document.getElementById('priceForm');
     if (priceForm) {
         priceForm.addEventListener('submit', async function (e) {
@@ -118,9 +109,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // ==========================================
     // 4. HELPER FUNCTIONS
-    // ==========================================
 
     // Rating display helper
     function displayRating(rating, element) {

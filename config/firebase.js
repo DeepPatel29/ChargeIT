@@ -5,8 +5,6 @@ const fs = require("fs");
 let serviceAccount;
 
 try {
-    // 1. VERCEL / PRODUCTION: Check for Environment Variable first
-    // We will paste the raw JSON content into this variable in Vercel settings
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
         // console.log("Loading Firebase credentials from Environment Variable...");
         serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
@@ -30,11 +28,11 @@ try {
         admin.initializeApp({
             credential: admin.credential.cert(serviceAccount)
         });
-        console.log("✅ Firebase Admin Initialized");
+        console.log("Firebase Admin Initialized");
     }
 
 } catch (error) {
-    console.error("❌ Firebase Initialization Error:", error.message);
+    console.error("Firebase Initialization Error:", error.message);
 }
 
 module.exports = admin;
