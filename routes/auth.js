@@ -240,6 +240,13 @@ router.post('/logout', (req, res) => {
         if (err) {
             console.error('Logout error:', err);
         }
+        // Explicitly clear the session cookie so the browser doesn't keep sending a stale session ID
+        res.clearCookie('connect.sid', {
+            path: '/',
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+        });
         res.redirect('/');
     });
 });

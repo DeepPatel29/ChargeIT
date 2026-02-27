@@ -52,35 +52,45 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-  import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  import {
+      getAuth,
+      GoogleAuthProvider,
+      signInWithPopup,
+      setPersistence,
+      browserSessionPersistence
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-  // REPLACE THIS WITH YOUR FIREBASE CONFIG FROM CONSOLE
-const firebaseConfig = {
-  apiKey: "AIzaSyCYYMDnhJNf1KN44DCAPswGC-6JDJXotds",
-  authDomain: "chargeit-cd16b.firebaseapp.com",
-  projectId: "chargeit-cd16b",
-  storageBucket: "chargeit-cd16b.firebasestorage.app",
-  messagingSenderId: "631188519830",
-  appId: "1:631188519830:web:45632b14e4dfb5c3633bb7",
-  measurementId: "G-LDF1LGT867"
-};
+  const firebaseConfig = {
+      apiKey: "AIzaSyCYYMDnhJNf1KN44DCAPswGC-6JDJXotds",
+      authDomain: "chargeit-cd16b.firebaseapp.com",
+      projectId: "chargeit-cd16b",
+      storageBucket: "chargeit-cd16b.firebasestorage.app",
+      messagingSenderId: "631188519830",
+      appId: "1:631188519830:web:45632b14e4dfb5c3633bb7",
+      measurementId: "G-LDF1LGT867"
+  };
 
-  // Initialize Firebase
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
+
+  // Force account selection every time — prevents auto-login with remembered account
   const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
 
   document.getElementById('google-login-btn').addEventListener('click', async () => {
       try {
+          // Use session persistence: Firebase forgets the user when the tab/browser closes
+          await setPersistence(auth, browserSessionPersistence);
+
           const result = await signInWithPopup(auth, provider);
           const idToken = await result.user.getIdToken();
 
-          // Send token to backend
+          // Mark that this session used Google login (used by logout handler)
+          localStorage.setItem('chargeIT_googleSignIn', 'true');
+
           const response = await fetch('/auth/google', {
               method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json'
-              },
+              headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ token: idToken })
           });
 
@@ -92,7 +102,9 @@ const firebaseConfig = {
           }
       } catch (error) {
           console.error('Error during Google login:', error);
-          alert('Error logging in with Google');
+          if (error.code !== 'auth/popup-closed-by-user') {
+              alert('Error logging in with Google. Please try again.');
+          }
       }
   });
 </script>

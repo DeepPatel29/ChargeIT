@@ -85,10 +85,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 let sessionStore;
 const isProduction = process.env.NODE_ENV === 'production';
 
-if (process.env.MONGO_URI) {
+if (process.env.MONGODB_URI) {
     try {
         sessionStore = MongoStore.create({
-            mongoUrl: process.env.MONGO_URI,
+            mongoUrl: process.env.MONGODB_URI,
             collectionName: 'sessions',
             ttl: 24 * 60 * 60,
             autoRemove: 'native'
@@ -100,7 +100,7 @@ if (process.env.MONGO_URI) {
         console.log("⚠️ Session Store: Memory (Fallback)");
     }
 } else {
-    console.warn("⚠️ MONGO_URI not found. Using MemoryStore.");
+    console.warn("⚠️ MONGODB_URI not found. Using MemoryStore.");
     sessionStore = new session.MemoryStore();
 }
 

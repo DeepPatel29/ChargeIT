@@ -22,13 +22,32 @@ const transporter = nodemailer.createTransport({
 });
 
 // Middleware to check if user is Admin
-const checkAdmin = (req, res, next) => {
-    if (req.session.user && req.session.user.isAdmin) {
-        return next();
+// Always does a fresh DB lookup so stale sessions and serverless cold-starts don't block access
+const checkAdmin = async (req, res, next) => {
+    if (!req.session || !req.session.user) {
+        return res.status(403).render('error', {
+            title: 'Access Denied',
+            message: 'You must be logged in to access this area.'
+        });
     }
-    res.status(403).render('error', { 
-        title: 'Access Denied', 
-        message: 'You must be an administrator to access this area.' 
+
+    try {
+        // DB check is the source of truth — fixes:
+        //  1. Admin status granted after the session was created
+        //  2. Vercel/Render serverless: session cookie present but isAdmin flag stale/wrong
+        const freshUser = await User.findById(req.session.user.id).select('isAdmin').lean();
+
+        if (freshUser && freshUser.isAdmin === true) {
+            req.session.user.isAdmin = true; // keep session in sync
+            return next();
+        }
+    } catch (dbErr) {
+        console.error('❌ Admin DB check error:', dbErr.message);
+    }
+
+    return res.status(403).render('error', {
+        title: 'Access Denied',
+        message: 'You must be an administrator to access this area.'
     });
 };
 
