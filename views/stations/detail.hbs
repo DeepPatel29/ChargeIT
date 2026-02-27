@@ -1,203 +1,329 @@
-<div class="container py-4">
+<div class="page-container">
+    {{!-- Breadcrumb --}}
     <nav aria-label="breadcrumb" class="mb-4">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="/">Home</a></li>
             <li class="breadcrumb-item"><a href="/stations">Stations</a></li>
-            <li class="breadcrumb-item active" aria-current="page">{{station.location.city}}</li>
+            <li class="breadcrumb-item active">{{station.location.city}}</li>
         </ol>
     </nav>
 
-    <div class="row">
+    <div class="row g-4">
+
+        {{!-- ── LEFT COLUMN ─────────────────────────────── --}}
         <div class="col-lg-8">
-            <div class="card shadow-sm mb-4">
-                <img src="{{station.imageUrl}}" class="card-img-top" alt="Station Image" style="height: 400px; object-fit: cover;">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h1 class="card-title h2 mb-2">{{station.location.city}} Charging Station</h1>
-                            <p class="text-muted"><i class="fas fa-map-marker-alt me-2"></i>{{station.location.address}}, {{station.location.city}}, {{station.location.country}}</p>
-                        </div>
-                        {{#if user}}
-                        <button class="btn btn-outline-danger favorite-btn" data-station-id="{{station.stationId}}" data-authenticated="true">
-                            <i class="{{#if isFavorite}}fas{{else}}far{{/if}} fa-heart me-1"></i> Favorite
-                        </button>
-                        {{/if}}
-                    </div>
 
-                    <div class="row mt-4">
-                        <div class="col-md-6 mb-3">
-                            <div class="p-3 bg-light rounded h-100">
-                                <h5 class="text-muted h6">Connector Types</h5>
-                                <div class="d-flex flex-wrap gap-2">
-                                    {{#each station.connectorTypes}}
-                                        <span class="badge bg-secondary">{{this}}</span>
-                                    {{/each}}
-                                </div>
+            {{!-- Hero Image Card --}}
+            <div class="card mb-4" style="overflow:hidden;">
+                <div style="position:relative;height:380px;">
+                    <img src="{{station.imageUrl}}"
+                         alt="{{station.location.city}} Charging Station"
+                         class="w-100 h-100"
+                         style="object-fit:cover;">
+                    <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.7) 0%,rgba(0,0,0,0.1) 50%,transparent 100%);"></div>
+
+                    {{!-- Overlay info --}}
+                    <div style="position:absolute;bottom:0;left:0;right:0;padding:1.5rem;">
+                        <div class="d-flex justify-content-between align-items-end flex-wrap gap-3">
+                            <div>
+                                <span style="font-size:0.75rem;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.08em;">
+                                    <i class="fas fa-map-marker-alt me-1" style="color:var(--accent);"></i>
+                                    {{station.location.country}}
+                                </span>
+                                <h1 class="text-white mb-1" style="font-size:1.8rem;text-shadow:0 2px 8px rgba(0,0,0,0.5);">
+                                    {{station.location.city}} Station
+                                </h1>
+                                <p style="color:rgba(255,255,255,0.65);font-size:0.85rem;margin:0;">
+                                    {{station.location.address}}
+                                </p>
+                            </div>
+                            <div class="d-flex gap-2 align-items-center">
+                                {{#if station.usesRenewableEnergy}}
+                                <span class="badge" style="background:rgba(0,195,106,0.85);color:#fff;backdrop-filter:blur(8px);padding:0.5em 0.9em;">
+                                    <i class="fas fa-leaf me-1"></i>Renewable
+                                </span>
+                                {{/if}}
+                                {{#if user}}
+                                <button class="btn btn-sm favorite-btn d-flex align-items-center gap-1"
+                                        data-station-id="{{station.stationId}}"
+                                        data-authenticated="true"
+                                        style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:#fff;backdrop-filter:blur(8px);">
+                                    <i class="{{#if isFavorite}}fas{{else}}far{{/if}} fa-heart" style="color:{{#if isFavorite}}#EF4444{{else}}rgba(255,255,255,0.7){{/if}};"></i>
+                                    <span class="d-none d-sm-inline">{{#if isFavorite}}Saved{{else}}Save{{/if}}</span>
+                                </button>
+                                {{/if}}
                             </div>
                         </div>
-                        
-                        <div class="col-md-6 mb-3">
-                            <div class="p-3 bg-light rounded h-100">
-                                <h5 class="text-muted h6">Pricing</h5>
-                                <div class="d-flex align-items-center justify-content-between">
-                                    {{!-- Using toFixed helper for clean display --}}
-                                    <h4 class="mb-0 text-success">${{toFixed station.costPerKWh 2}}/kWh</h4>
-                                    
-                                    {{#if user}}
-                                    <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#priceModal">
-                                        <i class="fas fa-edit me-1"></i> Suggest Edit
-                                    </button>
-                                    {{/if}}
-                                </div>
-                            </div>
-                        </div>
                     </div>
+                </div>
 
-                    <div class="row g-3 mt-2">
-                        <div class="col-6 col-md-3">
-                            <small class="text-muted d-block">Operator</small>
-                            <strong>{{station.stationOperator}}</strong>
+                {{!-- Key metrics row --}}
+                <div class="card-body px-0 py-0">
+                    <div class="row g-0 text-center" style="border-top:1px solid var(--card-border);">
+                        <div class="col border-end p-3">
+                            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted-color);margin-bottom:4px;">Charger Type</div>
+                            <div class="fw-600" style="font-size:0.9rem;font-weight:600;">{{station.chargerType}}</div>
                         </div>
-                        <div class="col-6 col-md-3">
-                            <small class="text-muted d-block">Power</small>
-                            <strong>{{station.chargingCapacityKW}} kW</strong>
+                        <div class="col border-end p-3">
+                            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted-color);margin-bottom:4px;">Operator</div>
+                            <div style="font-size:0.9rem;font-weight:600;">{{station.stationOperator}}</div>
                         </div>
-                        <div class="col-6 col-md-3">
-                            <small class="text-muted d-block">Availability</small>
-                            <strong>{{station.availabilityHours}}</strong>
+                        <div class="col border-end p-3">
+                            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted-color);margin-bottom:4px;">Power</div>
+                            <div style="font-size:0.9rem;font-weight:600;">{{station.chargingCapacityKW}} kW</div>
                         </div>
-                        <div class="col-6 col-md-3">
-                            <small class="text-muted d-block">Rating</small>
-                            <span class="text-warning">
-                                 <i class="fas fa-star"></i> {{station.rating}}
-                            </span>
+                        <div class="col p-3">
+                            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-muted-color);margin-bottom:4px;">Hours</div>
+                            <div style="font-size:0.9rem;font-weight:600;">{{station.availabilityHours}}</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">User Reviews</h5>
+            {{!-- Pricing + Connectors --}}
+            <div class="row g-3 mb-4">
+                <div class="col-sm-6">
+                    <div class="info-box h-100">
+                        <h6><i class="fas fa-dollar-sign me-1"></i>Pricing</h6>
+                        <div class="d-flex align-items-center justify-content-between gap-2">
+                            <div>
+                                <span style="font-family:'Space Grotesk',sans-serif;font-size:1.8rem;font-weight:800;color:var(--accent);letter-spacing:-0.03em;">
+                                    ${{toFixed station.costPerKWh 2}}
+                                </span>
+                                <span class="text-muted" style="font-size:0.85rem;">/kWh</span>
+                            </div>
+                            {{#if user}}
+                            <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#priceModal">
+                                <i class="fas fa-edit me-1"></i>Suggest
+                            </button>
+                            {{/if}}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="info-box h-100">
+                        <h6><i class="fas fa-plug me-1"></i>Connector Types</h6>
+                        <div class="d-flex flex-wrap gap-1 mt-2">
+                            {{#each station.connectorTypes}}
+                                <span class="badge bg-secondary">{{this}}</span>
+                            {{/each}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{!-- More Info --}}
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
+                    <div class="info-box text-center">
+                        <h6>Rating</h6>
+                        <div style="font-size:1.5rem;color:#F59E0B;font-weight:800;font-family:'Space Grotesk',sans-serif;">
+                            {{station.rating}}
+                        </div>
+                        <div style="font-size:0.7rem;color:#F59E0B;">
+                            {{#times station.rating}}<i class="fas fa-star"></i>{{/times}}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="info-box text-center">
+                        <h6>Parking</h6>
+                        <div style="font-size:1.5rem;font-weight:800;font-family:'Space Grotesk',sans-serif;color:var(--accent2);">
+                            {{station.parkingSpots}}
+                        </div>
+                        <div style="font-size:0.7rem;color:var(--text-muted-color);">spots</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="info-box text-center">
+                        <h6>Distance</h6>
+                        <div style="font-size:1.5rem;font-weight:800;font-family:'Space Grotesk',sans-serif;color:var(--body-text);">
+                            {{station.distanceToCityKm}}
+                        </div>
+                        <div style="font-size:0.7rem;color:var(--text-muted-color);">km to center</div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="info-box text-center">
+                        <h6>Installed</h6>
+                        <div style="font-size:1.5rem;font-weight:800;font-family:'Space Grotesk',sans-serif;color:var(--body-text);">
+                            {{station.installationYear}}
+                        </div>
+                        <div style="font-size:0.7rem;color:var(--text-muted-color);">year</div>
+                    </div>
+                </div>
+            </div>
+
+            {{!-- Reviews --}}
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-comments me-2" style="color:var(--accent);"></i>User Reviews</span>
+                    <span class="badge bg-secondary">{{station.reviews.length}} total</span>
                 </div>
                 <div class="card-body">
                     {{#if station.reviews.length}}
                         {{#each station.reviews}}
-                        <div class="review-item border-bottom pb-3 mb-3">
+                        <div class="review-item pb-3 mb-3" style="border-bottom:1px solid var(--card-border);">
                             <div class="d-flex justify-content-between align-items-start mb-2">
-                                <div>
-                                    <strong>{{this.userName}}</strong>
-                                    {{#if this.verifiedPurchase}}
-                                    <span class="badge bg-success ms-2">Verified</span>
-                                    {{/if}}
+                                <div class="d-flex align-items-center gap-2">
+                                    <div style="width:32px;height:32px;border-radius:50%;background:var(--accent-subtle);border:1px solid var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.8rem;color:var(--accent);">
+                                        {{this.userName.[0]}}
+                                    </div>
+                                    <div>
+                                        <strong style="font-size:0.875rem;">{{this.userName}}</strong>
+                                        {{#if this.verifiedPurchase}}
+                                        <span class="badge bg-success ms-1" style="font-size:0.65rem;">Verified</span>
+                                        {{/if}}
+                                    </div>
                                 </div>
                                 <small class="text-muted">{{formatDate this.date}}</small>
                             </div>
-                            <div class="rating mb-2">
-                                {{#times this.rating}}
-                                    <i class="fas fa-star text-warning small"></i>
-                                {{/times}}
+                            <div class="mb-2" style="font-size:0.78rem;color:#F59E0B;">
+                                {{#times this.rating}}<i class="fas fa-star"></i>{{/times}}
                                 {{#lt this.rating 5}}
-                                    {{#times (subtract 5 this.rating)}}
-                                        <i class="far fa-star text-warning small"></i>
-                                    {{/times}}
+                                    {{#times (subtract 5 this.rating)}}<i class="far fa-star" style="opacity:0.3;"></i>{{/times}}
                                 {{/lt}}
                             </div>
-                            <p class="mb-0">{{this.comment}}</p>
+                            <p class="mb-0" style="font-size:0.875rem;line-height:1.6;color:var(--body-text);">{{this.comment}}</p>
                         </div>
                         {{/each}}
                     {{else}}
-                        <p class="text-muted text-center py-3">No reviews yet. Be the first to review this station!</p>
+                        <div class="text-center py-4">
+                            <i class="fas fa-comment-slash fa-2x text-muted mb-3 d-block"></i>
+                            <p class="text-muted mb-0">No reviews yet — be the first!</p>
+                        </div>
                     {{/if}}
-                    
-                    {{#if user}}
-                        <div class="mt-4">
+
+                    <div class="mt-3 pt-2" style="border-top:1px solid var(--card-border);">
+                        {{#if user}}
                             <a href="/stations/{{station.stationId}}/review" class="btn btn-primary">
-                                <i class="fas fa-edit me-1"></i>Write a Review
+                                <i class="fas fa-pen me-2"></i>Write a Review
                             </a>
-                        </div>
-                    {{else}}
-                        <div class="alert alert-info mt-3">
-                            <a href="/auth/login" class="alert-link">Login</a> to write a review for this station.
-                        </div>
-                    {{/if}}
+                        {{else}}
+                            <div class="alert alert-info mb-0">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <a href="/auth/login" class="alert-link">Login</a> to write a review.
+                            </div>
+                        {{/if}}
+                    </div>
                 </div>
             </div>
         </div>
 
+        {{!-- ── RIGHT COLUMN ─────────────────────────────── --}}
         <div class="col-lg-4">
-            {{!-- Location Map Card REMOVED as requested --}}
 
-            <div class="card shadow-sm mb-4">
-                <div class="card-header bg-white">
-                    <h5 class="mb-0">Nearby Stations</h5>
-                </div>
-                <div class="list-group list-group-flush">
-                    {{#each nearbyStations}}
-                    <a href="/stations/{{this.stationId}}" class="list-group-item list-group-item-action">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h6 class="mb-1">{{this.location.city}}</h6>
-                            <small class="text-muted">{{this.distanceToCityKm}}km</small>
-                        </div>
-                        <p class="mb-1 small text-muted">{{this.chargerType}}</p>
-                    </a>
-                    {{/each}}
-                </div>
-            </div>
-
-             <div class="card">
+            {{!-- Station Stats --}}
+            <div class="card mb-4">
                 <div class="card-header">
-                    <h5 class="mb-0">Station Statistics</h5>
+                    <i class="fas fa-chart-bar me-2" style="color:var(--accent);"></i>Station Statistics
                 </div>
                 <div class="card-body">
-                    <div class="row text-center">
-                        <div class="col-6 mb-3">
+                    <div class="row text-center g-3">
+                        <div class="col-6">
                             <div class="stat-item">
-                                <i class="fas fa-users fa-2x text-primary mb-2"></i>
+                                <div style="width:44px;height:44px;border-radius:12px;background:var(--accent-subtle);display:flex;align-items:center;justify-content:center;margin:0 auto 0.5rem;">
+                                    <i class="fas fa-users" style="color:var(--accent);"></i>
+                                </div>
                                 <h5>{{station.usageStats.avgUsersPerDay}}</h5>
                                 <small class="text-muted">Avg Users/Day</small>
                             </div>
                         </div>
-                        <div class="col-6 mb-3">
+                        <div class="col-6">
                             <div class="stat-item">
-                                <i class="fas fa-road fa-2x text-info mb-2"></i>
-                                <h5>{{station.distanceToCityKm}}km</h5>
+                                <div style="width:44px;height:44px;border-radius:12px;background:rgba(59,130,246,0.1);display:flex;align-items:center;justify-content:center;margin:0 auto 0.5rem;">
+                                    <i class="fas fa-road" style="color:#3B82F6;"></i>
+                                </div>
+                                <h5 style="color:#3B82F6;">{{station.distanceToCityKm}}km</h5>
                                 <small class="text-muted">To City Center</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stat-item">
+                                <div style="width:44px;height:44px;border-radius:12px;background:rgba(245,158,11,0.1);display:flex;align-items:center;justify-content:center;margin:0 auto 0.5rem;">
+                                    <i class="fas fa-tools" style="color:#F59E0B;"></i>
+                                </div>
+                                <h5 style="color:#F59E0B;font-size:0.85rem;">{{station.maintenanceFrequency}}</h5>
+                                <small class="text-muted">Maintenance</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stat-item">
+                                <div style="width:44px;height:44px;border-radius:12px;background:rgba(16,185,129,0.1);display:flex;align-items:center;justify-content:center;margin:0 auto 0.5rem;">
+                                    <i class="fas fa-parking" style="color:#10B981;"></i>
+                                </div>
+                                <h5 style="color:#10B981;">{{station.parkingSpots}}</h5>
+                                <small class="text-muted">Parking Spots</small>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+
+            {{!-- Nearby Stations --}}
+            {{#if nearbyStations.length}}
+            <div class="card">
+                <div class="card-header">
+                    <i class="fas fa-map-marked-alt me-2" style="color:var(--accent);"></i>Nearby Stations
+                </div>
+                <div class="list-group list-group-flush">
+                    {{#each nearbyStations}}
+                    <a href="/stations/{{this.stationId}}"
+                       class="list-group-item list-group-item-action"
+                       style="border-color:var(--card-border);padding:0.9rem 1.1rem;">
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                            <div style="flex:1;min-width:0;">
+                                <div class="fw-semibold" style="font-size:0.9rem;">{{this.location.city}}</div>
+                                <small class="text-muted">{{this.chargerType}}</small>
+                            </div>
+                            <div class="text-end">
+                                <div style="font-size:0.75rem;color:var(--accent);font-weight:600;">${{this.costPerKWh}}/kWh</div>
+                                <small class="text-muted">{{this.distanceToCityKm}}km</small>
+                            </div>
+                        </div>
+                    </a>
+                    {{/each}}
+                </div>
+            </div>
+            {{/if}}
+
         </div>
     </div>
 </div>
 
+{{!-- Price Suggestion Modal --}}
 <div class="modal fade" id="priceModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Suggest New Price</h5>
+                <h5 class="modal-title">
+                    <i class="fas fa-edit me-2" style="color:var(--accent);"></i>Suggest Price Update
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
+                <p class="text-muted" style="font-size:0.875rem;">
+                    Help the community by suggesting an accurate price. Updates go live once verified by multiple users.
+                </p>
                 <form id="priceForm">
                     <input type="hidden" name="stationId" value="{{station.stationId}}">
                     <input type="hidden" name="stationDbId" value="{{station._id}}">
                     <input type="hidden" name="currentPrice" value="{{station.costPerKWh}}">
-                    
+
                     <div class="mb-3">
-                        <label class="form-label">Current Price: <strong>${{toFixed station.costPerKWh 2}}</strong></label>
+                        <label class="form-label">
+                            Current Price: <strong style="color:var(--accent);">${{toFixed station.costPerKWh 2}}/kWh</strong>
+                        </label>
                         <div class="input-group">
                             <span class="input-group-text">$</span>
-                            <input type="number" step="0.01" min="0" class="form-control" name="suggestedPrice" required placeholder="0.00">
+                            <input type="number" step="0.01" min="0" class="form-control"
+                                   name="suggestedPrice" required placeholder="0.00">
                             <span class="input-group-text">/kWh</span>
                         </div>
-                        <div class="form-text mt-2">
-                            <i class="fas fa-info-circle"></i> 
-                            Your suggestion will be reviewed. Prices are updated once confirmed by multiple users.
-                        </div>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100">Submit Suggestion</button>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-paper-plane me-2"></i>Submit Suggestion
+                    </button>
                 </form>
             </div>
         </div>

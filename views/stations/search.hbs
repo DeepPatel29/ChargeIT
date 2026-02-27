@@ -1,36 +1,36 @@
-<div class="row">
-    <div class="col-md-4">
-        <!-- Search Filters -->
-        <div class="card mb-4">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Search Filters</h5>
+<div class="row g-4">
+
+    {{!-- ── FILTERS SIDEBAR ─────────────────────────── --}}
+    <div class="col-lg-3 col-md-4">
+        <div class="card" style="position:sticky;top:80px;">
+            <div class="card-header">
+                <i class="fas fa-sliders-h me-2" style="color:var(--accent);"></i>Filters
             </div>
             <div class="card-body">
                 <form method="GET" action="/stations/search">
+
                     <div class="mb-3">
-                        <label for="city" class="form-label">City</label>
-                        <input type="text" class="form-control" id="city" name="city" 
-                               value="{{searchQuery.city}}" list="cities">
+                        <label class="form-label" for="city">City</label>
+                        <input type="text" class="form-control" id="city" name="city"
+                               value="{{searchQuery.city}}" list="cities"
+                               placeholder="e.g. Toronto">
                         <datalist id="cities">
-                            {{#each cities}}
-                                <option value="{{this}}">
-                            {{/each}}
+                            {{#each cities}}<option value="{{this}}">{{/each}}
                         </datalist>
                     </div>
-                    
+
                     <div class="mb-3">
-                        <label for="country" class="form-label">Country</label>
+                        <label class="form-label" for="country">Country</label>
                         <input type="text" class="form-control" id="country" name="country"
-                               value="{{searchQuery.country}}" list="countries">
+                               value="{{searchQuery.country}}" list="countries"
+                               placeholder="e.g. Canada">
                         <datalist id="countries">
-                            {{#each countries}}
-                                <option value="{{this}}">
-                            {{/each}}
+                            {{#each countries}}<option value="{{this}}">{{/each}}
                         </datalist>
                     </div>
-                    
+
                     <div class="mb-3">
-                        <label for="chargerType" class="form-label">Charger Type</label>
+                        <label class="form-label" for="chargerType">Charger Type</label>
                         <select class="form-select" id="chargerType" name="chargerType">
                             <option value="">Any Type</option>
                             {{#each chargerTypes}}
@@ -40,9 +40,9 @@
                             {{/each}}
                         </select>
                     </div>
-                    
-                    <div class="mb-3">
-                        <label for="minRating" class="form-label">Minimum Rating</label>
+
+                    <div class="mb-4">
+                        <label class="form-label" for="minRating">Min Rating</label>
                         <select class="form-select" id="minRating" name="minRating">
                             <option value="">Any Rating</option>
                             <option value="4" {{#eq searchQuery.minRating "4"}}selected{{/eq}}>4+ Stars</option>
@@ -50,82 +50,98 @@
                             <option value="2" {{#eq searchQuery.minRating "2"}}selected{{/eq}}>2+ Stars</option>
                         </select>
                     </div>
-                    
+
                     <div class="d-grid gap-2">
                         <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-search me-2"></i>Search Stations
+                            <i class="fas fa-search me-2"></i>Search
                         </button>
-                        <a href="/stations/search" class="btn btn-outline-secondary">Clear Filters</a>
+                        <a href="/stations/search" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-1"></i>Clear
+                        </a>
                     </div>
                 </form>
             </div>
         </div>
     </div>
-    
-    <div class="col-md-8">
-        <!-- Search Results -->
+
+    {{!-- ── RESULTS ─────────────────────────────────── --}}
+    <div class="col-lg-9 col-md-8">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2>Search Results</h2>
-            <span class="badge bg-primary fs-6">{{stations.length}} stations found</span>
+            <div>
+                <p class="section-label mb-0">Results</p>
+                <h2 style="font-size:1.5rem;margin:0;">
+                    {{#if stations.length}}
+                        {{stations.length}} station{{#gt stations.length 1}}s{{/gt}} found
+                    {{else}}
+                        No stations found
+                    {{/if}}
+                </h2>
+            </div>
+            <a href="/stations" class="btn btn-outline-primary btn-sm px-3">
+                <i class="fas fa-th me-1"></i>Browse All
+            </a>
         </div>
-        
+
         {{#if stations.length}}
             <div class="row g-3">
                 {{#each stations}}
                 <div class="col-12">
-                    <div class="card station-card h-100 shadow-sm">
+                    <div class="card station-card" style="border-radius:12px;overflow:hidden;">
                         <div class="row g-0">
-                            <div class="col-md-4">
-                                <img src="{{this.imageUrl}}" class="img-fluid rounded-start h-100" 
-                                     alt="{{this.location.city}} Station" style="object-fit: cover; height: 200px;">
+                            <div class="col-md-4" style="overflow:hidden;min-height:160px;">
+                                <img src="{{this.imageUrl}}"
+                                     class="w-100 h-100"
+                                     alt="{{this.location.city}}"
+                                     style="object-fit:cover;min-height:160px;">
                             </div>
                             <div class="col-md-8">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-start mb-2">
-                                        <h5 class="card-title">{{this.location.city}}, {{this.location.country}}</h5>
-                                        <span class="badge bg-primary">{{this.chargerType}}</span>
+                                <div class="card-body py-3">
+                                    <div class="d-flex justify-content-between align-items-start mb-1 gap-2">
+                                        <div>
+                                            <h5 class="mb-0" style="font-size:1rem;">{{this.location.city}}, {{this.location.country}}</h5>
+                                            <p class="text-muted mb-0" style="font-size:0.78rem;">
+                                                <i class="fas fa-map-marker-alt me-1"></i>{{this.location.address}}
+                                            </p>
+                                        </div>
+                                        <span class="badge bg-primary flex-shrink-0">{{this.chargerType}}</span>
                                     </div>
-                                    
-                                    <p class="card-text text-muted small mb-3">
-                                        <i class="fas fa-map-marker-alt me-1"></i>
-                                        {{this.location.address}}
-                                    </p>
-                                    
-                                    <div class="station-info mb-3">
-                                        <div class="row small">
-                                            <div class="col-6">
-                                                <i class="fas fa-bolt me-1 text-warning"></i>
-                                                {{this.chargingCapacityKW}}kW
-                                            </div>
-                                            <div class="col-6">
-                                                <i class="fas fa-dollar-sign me-1 text-success"></i>
-                                                ${{this.costPerKWh}}/kWh
-                                            </div>
-                                            <div class="col-6">
-                                                <i class="fas fa-road me-1 text-info"></i>
-                                                {{this.distanceToCityKm}}km to city
-                                            </div>
-                                            <div class="col-6">
-                                                <i class="fas fa-car me-1 text-secondary"></i>
-                                                {{this.parkingSpots}} spots
-                                            </div>
+
+                                    <div class="d-flex flex-wrap gap-1 my-2">
+                                        <span class="badge bg-success">${{this.costPerKWh}}/kWh</span>
+                                        {{#if this.usesRenewableEnergy}}
+                                            <span class="badge bg-info">Renewable</span>
+                                        {{/if}}
+                                    </div>
+
+                                    <div class="row g-2 text-muted mb-2" style="font-size:0.78rem;">
+                                        <div class="col-6 d-flex align-items-center gap-1">
+                                            <i class="fas fa-bolt" style="color:var(--warning);width:12px;"></i>
+                                            {{this.chargingCapacityKW}} kW
+                                        </div>
+                                        <div class="col-6 d-flex align-items-center gap-1">
+                                            <i class="fas fa-road" style="color:var(--accent2);width:12px;"></i>
+                                            {{this.distanceToCityKm}} km to city
+                                        </div>
+                                        <div class="col-6 d-flex align-items-center gap-1">
+                                            <i class="fas fa-car" style="color:var(--text-muted-color);width:12px;"></i>
+                                            {{this.parkingSpots}} parking spots
+                                        </div>
+                                        <div class="col-6 d-flex align-items-center gap-1">
+                                            <i class="fas fa-clock" style="color:var(--text-muted-color);width:12px;"></i>
+                                            {{this.availabilityHours}}
                                         </div>
                                     </div>
-                                    
+
                                     <div class="d-flex justify-content-between align-items-center">
-                                        <div class="rating">
-                                            {{#times this.rating}}
-                                                <i class="fas fa-star text-warning small"></i>
-                                            {{/times}}
+                                        <div style="font-size:0.78rem;color:#F59E0B;">
+                                            {{#times this.rating}}<i class="fas fa-star"></i>{{/times}}
                                             {{#lt this.rating 5}}
-                                                {{#times (subtract 5 this.rating)}}
-                                                    <i class="far fa-star text-warning small"></i>
-                                                {{/times}}
+                                                {{#times (subtract 5 this.rating)}}<i class="far fa-star" style="opacity:0.3;"></i>{{/times}}
                                             {{/lt}}
                                             <small class="text-muted ms-1">({{this.reviews.length}})</small>
                                         </div>
                                         <a href="/stations/{{this.stationId}}" class="btn btn-outline-primary btn-sm">
-                                            View Details <i class="fas fa-arrow-right ms-1"></i>
+                                            Details <i class="fas fa-arrow-right ms-1"></i>
                                         </a>
                                     </div>
                                 </div>
@@ -136,14 +152,19 @@
                 {{/each}}
             </div>
         {{else}}
-            <div class="text-center py-5">
-                <i class="fas fa-search fa-4x text-muted mb-3"></i>
-                <h3 class="text-muted">No stations found</h3>
-                <p class="text-muted">Try adjusting your search filters to find more stations.</p>
-                <a href="/stations" class="btn btn-primary mt-3">
-                    <i class="fas fa-charging-station me-2"></i>Browse All Stations
-                </a>
+            <div class="card text-center py-5">
+                <div class="card-body">
+                    <div style="width:72px;height:72px;border-radius:18px;background:var(--accent-subtle);display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;">
+                        <i class="fas fa-search fa-2x" style="color:var(--accent);"></i>
+                    </div>
+                    <h4 class="mb-2">No stations found</h4>
+                    <p class="text-muted mb-4">Try adjusting your filters or search in a different city.</p>
+                    <a href="/stations" class="btn btn-primary px-4">
+                        <i class="fas fa-charging-station me-2"></i>Browse All Stations
+                    </a>
+                </div>
             </div>
         {{/if}}
     </div>
+
 </div>

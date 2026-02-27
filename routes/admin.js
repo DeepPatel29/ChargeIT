@@ -6,11 +6,18 @@ const PriceSuggestion = require('../models/PriceSuggestion');
 const nodemailer = require('nodemailer'); // Required for email notifications
 
 // EMAIL CONFIGURATION
+// Uses explicit SMTP settings (more reliable than 'service: gmail' on cloud platforms)
+// Requires Gmail App Password (not regular password) - set up at myaccount.google.com/apppasswords
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
     auth: {
-        user: process.env.EMAIL_USER, 
-        pass: process.env.EMAIL_PASS 
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+    },
+    tls: {
+        rejectUnauthorized: false
     }
 });
 
@@ -145,19 +152,20 @@ router.post('/price-suggestions/approve', async (req, res) => {
             .populate('userId');
 
         // 5. Send Email to Each User
-        if (process.env.EMAIL_USER) {
-            approvedSuggestions.forEach(async (suggestion) => {
+        if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+            // Use for...of so each email is properly awaited (forEach ignores async)
+            for (const suggestion of approvedSuggestions) {
                 if (suggestion.userId && suggestion.userId.email) {
                     const mailOptions = {
-                        from: process.env.EMAIL_USER,
+                        from: `"ChargeIT" <${process.env.EMAIL_USER}>`,
                         to: suggestion.userId.email,
                         subject: 'ChargeIT: Price Suggestion Approved!',
                         html: `
-                            <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 5px;">
-                                <h2 style="color: #198754;">Suggestion Approved!</h2>
+                            <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 5px; max-width: 500px;">
+                                <h2 style="color: #00C36A;">Suggestion Approved!</h2>
                                 <p>Hi <strong>${suggestion.userId.username}</strong>,</p>
                                 <p>Thank you for contributing to the ChargeIT community. Your price suggestion for <strong>${station.location.city}</strong> has been verified and approved.</p>
-                                
+
                                 <table style="width: 100%; max-width: 400px; margin: 20px 0; border-collapse: collapse;">
                                     <tr style="background-color: #f8f9fa;">
                                         <td style="padding: 10px; border: 1px solid #ddd;">Previous Price</td>
@@ -181,14 +189,14 @@ router.post('/price-suggestions/approve', async (req, res) => {
 
                     try {
                         await transporter.sendMail(mailOptions);
-                        console.log(`Email sent to ${suggestion.userId.email}`);
+                        console.log(`✅ Email sent to ${suggestion.userId.email}`);
                     } catch (err) {
-                        console.error('Email error:', err.message);
+                        console.error(`❌ Email failed for ${suggestion.userId.email}:`, err.message);
                     }
                 }
-            });
+            }
         } else {
-            console.warn('⚠️ No EMAIL_USER in .env - Emails skipped.');
+            console.warn('⚠️ EMAIL_USER or EMAIL_PASS not set - emails skipped. Set these in your Vercel/Render environment variables.');
         }
 
         // 6. Mark suggestions as approved

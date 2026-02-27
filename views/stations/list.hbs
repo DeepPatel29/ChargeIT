@@ -1,71 +1,109 @@
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1><i class="fas fa-charging-station me-2"></i>All Charging Stations</h1>
-    <a href="/stations/search" class="btn btn-primary">
-        <i class="fas fa-search me-2"></i>Advanced Search
+{{!-- Page Header --}}
+<div class="section-header mb-4">
+    <div>
+        <p class="section-label mb-1"><i class="fas fa-charging-station me-1"></i>Network</p>
+        <h1 style="font-size:1.9rem;">All Charging Stations</h1>
+    </div>
+    <a href="/stations/search" class="btn btn-outline-primary px-4">
+        <i class="fas fa-sliders-h me-2"></i>Filter
     </a>
 </div>
 
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="alert alert-info">
-            <i class="fas fa-info-circle me-2"></i>
-            Showing {{stations.length}} of {{totalStations}} stations worldwide
-        </div>
+{{#if dbError}}
+<div class="alert alert-warning mb-4">
+    <i class="fas fa-exclamation-triangle me-2"></i>
+    Showing sample data — database unavailable.
+</div>
+{{/if}}
+
+<div class="d-flex align-items-center gap-3 mb-4 p-3 rounded-3" style="background:var(--card-bg);border:1px solid var(--card-border);">
+    <div style="width:38px;height:38px;border-radius:10px;background:var(--accent-subtle);display:flex;align-items:center;justify-content:center;">
+        <i class="fas fa-bolt" style="color:var(--accent);"></i>
+    </div>
+    <div>
+        <span class="fw-semibold">{{stations.length}}</span>
+        <span class="text-muted"> stations on this page &nbsp;·&nbsp; </span>
+        <span class="fw-semibold">{{totalStations}}</span>
+        <span class="text-muted"> total worldwide</span>
     </div>
 </div>
 
 <div class="row g-4">
     {{#each stations}}
     <div class="col-md-6 col-lg-4">
-        <div class="card station-card h-100 shadow-sm">
-            <img src="{{this.imageUrl}}" class="card-img-top" alt="{{this.location.city}} Station" 
-                 style="height: 200px; object-fit: cover;">
-            <div class="card-body">
-                <h5 class="card-title">{{this.location.city}}, {{this.location.country}}</h5>
-                <p class="card-text text-muted small mb-2">
+        <div class="card station-card h-100">
+            {{!-- Image with overlay --}}
+            <div style="position:relative;overflow:hidden;height:190px;">
+                <img src="{{this.imageUrl}}"
+                     class="card-img-top w-100 h-100"
+                     alt="{{this.location.city}} Station"
+                     style="object-fit:cover;">
+                <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.55) 0%,transparent 55%);"></div>
+                {{!-- Location chip --}}
+                <div style="position:absolute;bottom:10px;left:12px;right:12px;display:flex;justify-content:space-between;align-items:flex-end;">
+                    <div>
+                        <span style="font-size:0.7rem;color:rgba(255,255,255,0.6);display:block;margin-bottom:2px;">
+                            <i class="fas fa-map-marker-alt me-1"></i>{{this.location.country}}
+                        </span>
+                        <span style="font-size:0.95rem;font-weight:700;color:#fff;font-family:'Space Grotesk',sans-serif;letter-spacing:-0.02em;">
+                            {{this.location.city}}
+                        </span>
+                    </div>
+                    {{#if this.usesRenewableEnergy}}
+                    <span class="badge" style="background:rgba(0,195,106,0.85);color:#fff;backdrop-filter:blur(6px);font-size:0.68rem;">
+                        <i class="fas fa-leaf"></i>
+                    </span>
+                    {{/if}}
+                </div>
+            </div>
+
+            <div class="card-body d-flex flex-column pt-3">
+                {{!-- Address --}}
+                <p class="text-muted mb-3" style="font-size:0.78rem;line-height:1.4;">
                     <i class="fas fa-map-marker-alt me-1"></i>{{this.location.address}}
                 </p>
-                
-                <div class="station-badges mb-3">
+
+                {{!-- Badges --}}
+                <div class="d-flex flex-wrap gap-1 mb-3">
                     <span class="badge bg-primary">{{this.chargerType}}</span>
                     <span class="badge bg-success">${{this.costPerKWh}}/kWh</span>
                     {{#if this.usesRenewableEnergy}}
-                        <span class="badge bg-info">Renewable Energy</span>
+                        <span class="badge bg-info">Renewable</span>
                     {{/if}}
                 </div>
-                
-                <div class="station-info mb-3">
-                    <div class="row small text-muted">
-                        <div class="col-6">
-                            <i class="fas fa-bolt me-1"></i>
-                            {{this.chargingCapacityKW}}kW
-                        </div>
-                        <div class="col-6">
-                            <i class="fas fa-car me-1"></i>
-                            {{this.parkingSpots}} spots
-                        </div>
-                        <div class="col-6">
-                            <i class="fas fa-users me-1"></i>
-                            {{this.usageStats.avgUsersPerDay}}/day
-                        </div>
-                        <div class="col-6">
-                            <i class="fas fa-road me-1"></i>
-                            {{this.distanceToCityKm}}km
-                        </div>
+
+                {{!-- Quick stats --}}
+                <div class="row g-2 mb-3 text-muted" style="font-size:0.78rem;">
+                    <div class="col-6 d-flex align-items-center gap-1">
+                        <i class="fas fa-bolt" style="color:var(--warning);width:12px;text-align:center;"></i>
+                        {{this.chargingCapacityKW}} kW
+                    </div>
+                    <div class="col-6 d-flex align-items-center gap-1">
+                        <i class="fas fa-car" style="color:var(--accent2);width:12px;text-align:center;"></i>
+                        {{this.parkingSpots}} spots
+                    </div>
+                    <div class="col-6 d-flex align-items-center gap-1">
+                        <i class="fas fa-users" style="color:var(--accent);width:12px;text-align:center;"></i>
+                        {{this.usageStats.avgUsersPerDay}}/day
+                    </div>
+                    <div class="col-6 d-flex align-items-center gap-1">
+                        <i class="fas fa-road" style="color:var(--text-muted-color);width:12px;text-align:center;"></i>
+                        {{this.distanceToCityKm}} km
                     </div>
                 </div>
-                
-                <div class="d-flex justify-content-between align-items-center">
-                    <div class="rating">
+
+                {{!-- Rating + CTA --}}
+                <div class="mt-auto d-flex justify-content-between align-items-center pt-2" style="border-top:1px solid var(--card-border);">
+                    <div class="rating" style="font-size:0.75rem;">
                         {{#times this.rating}}
-                            <i class="fas fa-star text-warning small"></i>
+                            <i class="fas fa-star" style="color:#F59E0B;"></i>
                         {{/times}}
                         {{#lt this.rating 5}}
                             {{#times (subtract 5 this.rating)}}
-                                <i class="far fa-star text-warning small"></i>
+                                <i class="far fa-star" style="color:#F59E0B;opacity:0.3;"></i>
                             {{/times}}
                         {{/lt}}
-                        <small class="text-muted ms-1">({{this.reviews.length}} reviews)</small>
+                        <small class="text-muted ms-1">{{this.reviews.length}} reviews</small>
                     </div>
                     <a href="/stations/{{this.stationId}}" class="btn btn-outline-primary btn-sm">
                         Details <i class="fas fa-arrow-right ms-1"></i>
@@ -77,38 +115,46 @@
     {{/each}}
 </div>
 
+{{!-- Pagination --}}
 {{#if (gt totalPages 1)}}
-<nav class="mt-5">
-    <ul class="pagination justify-content-center">
-        
+<nav class="mt-5" aria-label="Station pages">
+    <ul class="pagination justify-content-center gap-1">
+
         <li class="page-item {{#eq currentPage 1}}disabled{{/eq}}">
-            <a class="page-link" href="?page={{subtract currentPage 1}}">Previous</a>
+            <a class="page-link" href="?page={{subtract currentPage 1}}&perPage={{perPage}}">
+                <i class="fas fa-chevron-left"></i>
+            </a>
         </li>
-        
+
         {{#if showFirst}}
             <li class="page-item">
-                <a class="page-link" href="?page=1">1</a>
+                <a class="page-link" href="?page=1&perPage={{perPage}}">1</a>
             </li>
-            <li class="page-item disabled"><span class="page-link">...</span></li>
+            <li class="page-item disabled"><span class="page-link">…</span></li>
         {{/if}}
 
         {{#each pages}}
             <li class="page-item {{#eq this ../currentPage}}active{{/eq}}">
-                <a class="page-link" href="?page={{this}}">{{this}}</a>
+                <a class="page-link" href="?page={{this}}&perPage={{../perPage}}">{{this}}</a>
             </li>
         {{/each}}
-        
+
         {{#if showLast}}
-            <li class="page-item disabled"><span class="page-link">...</span></li>
+            <li class="page-item disabled"><span class="page-link">…</span></li>
             <li class="page-item">
-                <a class="page-link" href="?page={{totalPages}}">{{totalPages}}</a>
+                <a class="page-link" href="?page={{totalPages}}&perPage={{perPage}}">{{totalPages}}</a>
             </li>
         {{/if}}
 
         <li class="page-item {{#eq currentPage totalPages}}disabled{{/eq}}">
-            <a class="page-link" href="?page={{add currentPage 1}}">Next</a>
+            <a class="page-link" href="?page={{add currentPage 1}}&perPage={{perPage}}">
+                <i class="fas fa-chevron-right"></i>
+            </a>
         </li>
 
     </ul>
+    <p class="text-center text-muted mt-2" style="font-size:0.8rem;">
+        Page {{currentPage}} of {{totalPages}}
+    </p>
 </nav>
 {{/if}}
