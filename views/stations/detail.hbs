@@ -260,6 +260,16 @@
                 </div>
             </div>
 
+            {{!-- Interactive Map --}}
+            {{#if station.location.geo.lat}}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <i class="fas fa-map-marked-alt me-2" style="color:var(--accent);"></i>Location Map
+                </div>
+                <div id="stationMap" class="map-container" style="height:260px;border-radius:0 0 14px 14px;border:none;"></div>
+            </div>
+            {{/if}}
+
             {{!-- Nearby Stations --}}
             {{#if nearbyStations.length}}
             <div class="card">
@@ -329,3 +339,72 @@
         </div>
     </div>
 </div>
+
+{{!-- Leaflet Map Script --}}
+{{#if station.location.geo.lat}}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function() {
+    const lat = {{station.location.geo.lat}};
+    const lng = {{station.location.geo.lng}};
+    const city = "{{station.location.city}}";
+    const chargerType = "{{station.chargerType}}";
+    const price = "${{toFixed station.costPerKWh 2}}/kWh";
+
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+    const map = L.map('stationMap', { zoomControl: true, scrollWheelZoom: false }).setView([lat, lng], 14);
+
+    const tileUrl = isDark
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+
+    L.tileLayer(tileUrl, {
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+        maxZoom: 19
+    }).addTo(map);
+
+    // Custom green marker
+    const markerHtml = `
+        <div style="
+            width:38px;height:38px;
+            background:#00C36A;
+            border-radius:50% 50% 50% 0;
+            transform:rotate(-45deg);
+            display:flex;align-items:center;justify-content:center;
+            box-shadow:0 0 16px rgba(0,195,106,0.5),0 3px 8px rgba(0,0,0,0.3);
+        ">
+            <i class="fas fa-charging-station" style="color:white;font-size:14px;transform:rotate(45deg);"></i>
+        </div>
+    `;
+
+    const customIcon = L.divIcon({
+        html: markerHtml,
+        className: '',
+        iconSize: [38, 38],
+        iconAnchor: [19, 38],
+        popupAnchor: [0, -40]
+    });
+
+    L.marker([lat, lng], { icon: customIcon }).addTo(map)
+        .bindPopup(`
+            <div style="font-family:'Inter',sans-serif;min-width:160px;">
+                <div style="font-weight:700;font-size:0.95rem;margin-bottom:4px;">${city} Station</div>
+                <div style="font-size:0.78rem;color:#617490;margin-bottom:4px;">${chargerType}</div>
+                <div style="font-size:0.85rem;color:#00C36A;font-weight:700;">${price}</div>
+            </div>
+        `, { maxWidth: 220 })
+        .openPopup();
+
+    // Radius circle
+    L.circle([lat, lng], {
+        color: '#00C36A',
+        fillColor: '#00C36A',
+        fillOpacity: 0.06,
+        weight: 1.5,
+        radius: 800
+    }).addTo(map);
+})();
+</script>
+{{/if}}

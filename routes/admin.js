@@ -22,56 +22,107 @@ const transporter = nodemailer.createTransport({
 });
 
 // Middleware to check if user is Admin
-// Always does a fresh DB lookup so stale sessions and serverless cold-starts don't block access
 const checkAdmin = async (req, res, next) => {
     if (!req.session || !req.session.user) {
+        console.log('🔒 checkAdmin: No session/user found');
         return res.status(403).render('error', {
             title: 'Access Denied',
-            message: 'You must be logged in to access this area.'
+            message: 'You must be logged in to access this area.',
+            hint: 'Please login with your admin account.'
         });
     }
 
+    console.log(`🔒 checkAdmin: Checking user id=${req.session.user.id} email=${req.session.user.email}`);
+
     try {
-        // DB check is the source of truth — fixes:
-        //  1. Admin status granted after the session was created
-        //  2. Vercel/Render serverless: session cookie present but isAdmin flag stale/wrong
-        const freshUser = await User.findById(req.session.user.id).select('isAdmin').lean();
+        const mongoose = require('mongoose');
+        if (mongoose.connection.readyState !== 1) {
+            console.error('❌ checkAdmin: MongoDB not connected! readyState=' + mongoose.connection.readyState);
+            return res.status(503).render('error', {
+                title: 'Service Unavailable',
+                message: 'Database not connected. Cannot verify admin status.',
+                hint: 'Check MONGODB_URI in your Vercel environment variables.'
+            });
+        }
+
+        const freshUser = await User.findById(req.session.user.id).select('isAdmin username email').lean();
+        console.log(`🔒 checkAdmin: DB result =`, freshUser);
 
         if (freshUser && freshUser.isAdmin === true) {
-            req.session.user.isAdmin = true; // keep session in sync
+            req.session.user.isAdmin = true;
             return next();
         }
+
+        console.warn(`🔒 checkAdmin: DENIED — user ${freshUser?.email} isAdmin=${freshUser?.isAdmin}`);
+        console.warn(`   TIP: Visit /auth/setup-admin?secret=YOUR_ADMIN_SECRET (while logged in) to grant admin access.`);
     } catch (dbErr) {
         console.error('❌ Admin DB check error:', dbErr.message);
+        return res.status(500).render('error', {
+            title: 'Server Error',
+            message: 'Could not verify admin status: ' + dbErr.message
+        });
     }
 
     return res.status(403).render('error', {
         title: 'Access Denied',
-        message: 'You must be an administrator to access this area.'
+        message: 'You do not have administrator privileges.',
+        hint: 'If you should be an admin, use /auth/setup-admin?secret=YOUR_ADMIN_SECRET while logged in.'
     });
 };
 
 // Protect all admin routes
 router.use(checkAdmin);
 
+// Set admin layout + inject pendingSuggestions badge count for all admin pages
+router.use(async (req, res, next) => {
+    try {
+        const pendingCount = await PriceSuggestion.countDocuments({ status: 'pending' });
+        res.locals.pendingSuggestions = pendingCount;
+    } catch(e) { res.locals.pendingSuggestions = 0; }
+
+    const _render = res.render.bind(res);
+    res.render = (view, options, callback) => {
+        const opts = (typeof options === 'object' && options !== null) ? options : {};
+        if (!opts.layout) opts.layout = 'admin';
+        _render(view, opts, callback);
+    };
+    next();
+});
+
 // 1. ADMIN DASHBOARD
 router.get('/', async (req, res) => {
     try {
         const userCount = await User.countDocuments();
         const stationCount = await Station.countDocuments();
-        // Count pending suggestions for the dashboard badge
         const pendingSuggestions = await PriceSuggestion.countDocuments({ status: 'pending' });
-        
+        const approvedSuggestions = await PriceSuggestion.countDocuments({ status: 'approved' });
+
         const recentStations = await Station.find().sort({ createdAt: -1 }).limit(5).lean();
         const recentUsers = await User.find().sort({ createdAt: -1 }).limit(5).lean();
+
+        // Chart data: stations by charger type
+        const chargerTypeStats = await Station.aggregate([
+            { $group: { _id: '$chargerType', count: { $sum: 1 } } },
+            { $sort: { count: -1 } }
+        ]);
+
+        // Chart data: top 5 countries by station count
+        const countryStats = await Station.aggregate([
+            { $group: { _id: '$location.country', count: { $sum: 1 } } },
+            { $sort: { count: -1 } },
+            { $limit: 6 }
+        ]);
 
         res.render('admin/dashboard', {
             title: 'Admin Dashboard',
             userCount,
             stationCount,
             pendingSuggestions,
+            approvedSuggestions,
             recentStations,
-            recentUsers
+            recentUsers,
+            chargerTypeStatsJson: JSON.stringify(chargerTypeStats),
+            countryStatsJson: JSON.stringify(countryStats)
         });
     } catch (error) {
         console.error(error);

@@ -1,95 +1,262 @@
-<div class="row mb-4">
-    <div class="col-md-12">
-        <h2 class="mb-3"><i class="fas fa-tachometer-alt me-2"></i>Admin Dashboard</h2>
+{{!-- Page Header --}}
+<div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
+    <div>
+        <h1 class="admin-page-title">Dashboard</h1>
+        <p class="admin-page-subtitle mb-0">Welcome back, <strong>{{user.username}}</strong>. Here's what's happening.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="/admin/stations/add" class="btn btn-primary btn-sm">
+            <i class="fas fa-plus me-1"></i>Add Station
+        </a>
+        <a href="/admin/users/add" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-user-plus me-1"></i>Add User
+        </a>
     </div>
 </div>
 
-<div class="row mb-4">
-    <div class="col-md-4 mb-3">
-        <div class="card text-white bg-primary h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title mb-0">Total Stations</h6>
-                        <h2 class="my-2">{{stationCount}}</h2>
-                    </div>
-                    <i class="fas fa-charging-station fa-3x opacity-50"></i>
+{{!-- ═══ STAT CARDS ════════════════════════════════════════════════════════ --}}
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+        <div class="admin-stat-card">
+            <div class="admin-stat-icon" style="background:rgba(0,195,106,0.12);">
+                <i class="fas fa-charging-station" style="color:var(--accent);"></i>
+            </div>
+            <div>
+                <div class="admin-stat-value">{{stationCount}}</div>
+                <div class="admin-stat-label">Total Stations</div>
+                <div class="admin-stat-trend" style="color:var(--accent);">
+                    <i class="fas fa-globe me-1"></i>Live network
                 </div>
-                <a href="/admin/stations" class="text-white text-decoration-none small">Manage Stations &rarr;</a>
             </div>
         </div>
     </div>
-
-    <div class="col-md-4 mb-3">
-        <div class="card text-white bg-success h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title mb-0">Total Users</h6>
-                        <h2 class="my-2">{{userCount}}</h2>
-                    </div>
-                    <i class="fas fa-users fa-3x opacity-50"></i>
+    <div class="col-sm-6 col-xl-3">
+        <div class="admin-stat-card">
+            <div class="admin-stat-icon" style="background:rgba(59,130,246,0.12);">
+                <i class="fas fa-users" style="color:#3B82F6;"></i>
+            </div>
+            <div>
+                <div class="admin-stat-value">{{userCount}}</div>
+                <div class="admin-stat-label">Registered Users</div>
+                <div class="admin-stat-trend" style="color:#3B82F6;">
+                    <i class="fas fa-user-check me-1"></i>Active members
                 </div>
-                <a href="/admin/users" class="text-white text-decoration-none small">Manage Users &rarr;</a>
             </div>
         </div>
     </div>
-
-    <div class="col-md-4 mb-3">
-        <div class="card text-dark bg-warning h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title mb-0">Price Updates</h6>
-                        <h2 class="my-2">{{pendingSuggestions}}</h2>
-                    </div>
-                    <i class="fas fa-tags fa-3x opacity-50"></i>
+    <div class="col-sm-6 col-xl-3">
+        <div class="admin-stat-card">
+            <div class="admin-stat-icon" style="background:rgba(245,158,11,0.12);">
+                <i class="fas fa-tags" style="color:#F59E0B;"></i>
+            </div>
+            <div>
+                <div class="admin-stat-value">{{pendingSuggestions}}</div>
+                <div class="admin-stat-label">Pending Reviews</div>
+                <div class="admin-stat-trend" style="color:#F59E0B;">
+                    <a href="/admin/price-suggestions" style="color:inherit;text-decoration:none;">
+                        <i class="fas fa-arrow-right me-1"></i>Review now
+                    </a>
                 </div>
-                <a href="/admin/price-suggestions" class="text-dark text-decoration-none small">Review Suggestions &rarr;</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-xl-3">
+        <div class="admin-stat-card">
+            <div class="admin-stat-icon" style="background:rgba(16,185,129,0.12);">
+                <i class="fas fa-check-circle" style="color:#10B981;"></i>
+            </div>
+            <div>
+                <div class="admin-stat-value">{{approvedSuggestions}}</div>
+                <div class="admin-stat-label">Approved Updates</div>
+                <div class="admin-stat-trend" style="color:#10B981;">
+                    <i class="fas fa-shield-alt me-1"></i>Community verified
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<div class="row">
-    <div class="col-md-6 mb-4">
-        <div class="card h-100">
-            <div class="card-header bg-light">
-                <h5 class="mb-0">Recently Added Stations</h5>
+{{!-- ═══ CHARTS ROW ══════════════════════════════════════════════════════ --}}
+<div class="row g-3 mb-4">
+
+    {{!-- Charger Type Distribution --}}
+    <div class="col-lg-5">
+        <div class="chart-card h-100">
+            <div class="chart-card-header">
+                <div>
+                    <div class="chart-card-title">Charger Type Distribution</div>
+                    <div class="chart-card-subtitle">Breakdown across all stations</div>
+                </div>
+                <span class="badge" style="background:rgba(0,195,106,0.12);color:var(--accent);border:1px solid rgba(0,195,106,0.25);">Live</span>
             </div>
-            <ul class="list-group list-group-flush">
+            <div style="position:relative;height:220px;">
+                <canvas id="chargerTypeChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    {{!-- Top Countries --}}
+    <div class="col-lg-7">
+        <div class="chart-card h-100">
+            <div class="chart-card-header">
+                <div>
+                    <div class="chart-card-title">Top Countries by Stations</div>
+                    <div class="chart-card-subtitle">Geographic distribution of network</div>
+                </div>
+                <span class="badge" style="background:rgba(59,130,246,0.12);color:#3B82F6;border:1px solid rgba(59,130,246,0.25);">Global</span>
+            </div>
+            <div style="position:relative;height:220px;">
+                <canvas id="countryChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{!-- ═══ RECENT TABLES ROW ═════════════════════════════════════════════════ --}}
+<div class="row g-3">
+
+    {{!-- Recent Stations --}}
+    <div class="col-lg-6">
+        <div class="admin-table-card">
+            <div class="admin-table-header">
+                <h5><i class="fas fa-charging-station me-2" style="color:var(--accent);"></i>Recent Stations</h5>
+                <a href="/admin/stations" class="btn btn-outline-primary btn-sm">View All</a>
+            </div>
+            <div class="p-0">
                 {{#each recentStations}}
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>{{this.location.city}}</strong>
-                            <div class="small text-muted">{{this.stationId}}</div>
-                        </div>
-                        <span class="badge bg-secondary">{{this.chargerType}}</span>
-                    </li>
+                <div class="activity-item px-3">
+                    <div class="activity-dot"></div>
+                    <div class="flex-grow-1" style="min-width:0;">
+                        <div style="font-size:0.875rem;font-weight:600;color:var(--body-text);">{{this.location.city}}</div>
+                        <div class="text-muted" style="font-size:0.75rem;">{{this.stationId}} &middot; {{this.chargerType}}</div>
+                    </div>
+                    <span class="badge bg-success">${{this.costPerKWh}}/kWh</span>
+                </div>
                 {{/each}}
-            </ul>
+            </div>
         </div>
     </div>
-    <div class="col-md-6 mb-4">
-        <div class="card h-100">
-            <div class="card-header bg-light">
-                <h5 class="mb-0">Newest Users</h5>
+
+    {{!-- Recent Users --}}
+    <div class="col-lg-6">
+        <div class="admin-table-card">
+            <div class="admin-table-header">
+                <h5><i class="fas fa-users me-2" style="color:#3B82F6;"></i>Recent Users</h5>
+                <a href="/admin/users" class="btn btn-outline-primary btn-sm">View All</a>
             </div>
-            <ul class="list-group list-group-flush">
+            <div class="p-0">
                 {{#each recentUsers}}
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>{{this.username}}</strong>
-                            <div class="small text-muted">{{this.email}}</div>
-                        </div>
-                        {{#if this.isAdmin}}
-                            <span class="badge bg-danger">Admin</span>
-                        {{else}}
-                            <span class="badge bg-info">User</span>
-                        {{/if}}
-                    </li>
+                <div class="activity-item px-3">
+                    <div class="activity-dot {{#if this.isAdmin}}dot-warning{{else}}dot-info{{/if}}"></div>
+                    <div class="flex-grow-1" style="min-width:0;">
+                        <div style="font-size:0.875rem;font-weight:600;color:var(--body-text);">{{this.username}}</div>
+                        <div class="text-muted" style="font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{this.email}}</div>
+                    </div>
+                    {{#if this.isAdmin}}
+                        <span class="badge" style="background:rgba(245,158,11,0.12);color:#F59E0B;border:1px solid rgba(245,158,11,0.25);">Admin</span>
+                    {{else}}
+                        <span class="badge" style="background:rgba(59,130,246,0.12);color:#3B82F6;border:1px solid rgba(59,130,246,0.25);">User</span>
+                    {{/if}}
+                </div>
                 {{/each}}
-            </ul>
+            </div>
         </div>
     </div>
 </div>
+
+{{!-- Chart.js Script --}}
+<script>
+(function() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const textColor = isDark ? 'rgba(200,216,236,0.7)' : 'rgba(71,85,105,0.8)';
+    const gridColor = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+
+    Chart.defaults.font.family = "'Inter', sans-serif";
+    Chart.defaults.font.size = 12;
+
+    // ─ Charger Type Doughnut ─────────────────────────
+    try {
+        const chargerData = {{{chargerTypeStatsJson}}};
+        const chargerLabels = chargerData.map(function(d) { return d._id || 'Unknown'; });
+        const chargerCounts = chargerData.map(function(d) { return d.count; });
+        const chartColors = ['#00C36A','#3B82F6','#F59E0B','#EF4444','#8B5CF6','#06B6D4'];
+
+        new Chart(document.getElementById('chargerTypeChart'), {
+            type: 'doughnut',
+            data: {
+                labels: chargerLabels,
+                datasets: [{
+                    data: chargerCounts,
+                    backgroundColor: chartColors.map(function(c) { return c + '22'; }),
+                    borderColor: chartColors,
+                    borderWidth: 2,
+                    hoverBackgroundColor: chartColors.map(function(c) { return c + '44'; }),
+                    hoverBorderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '65%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { padding: 12, usePointStyle: true, pointStyleWidth: 8, color: textColor }
+                    },
+                    tooltip: {
+                        backgroundColor: isDark ? '#0C1526' : '#fff',
+                        borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+                        borderWidth: 1,
+                        titleColor: isDark ? '#E8F0FF' : '#0F172A',
+                        bodyColor: textColor,
+                        padding: 10
+                    }
+                }
+            }
+        });
+    } catch(e) { console.warn('Charger chart error:', e); }
+
+    // ─ Country Bar Chart ──────────────────────────────
+    try {
+        const countryData = {{{countryStatsJson}}};
+        const countryLabels = countryData.map(function(d) { return d._id || 'Unknown'; });
+        const countryCounts = countryData.map(function(d) { return d.count; });
+
+        new Chart(document.getElementById('countryChart'), {
+            type: 'bar',
+            data: {
+                labels: countryLabels,
+                datasets: [{
+                    label: 'Stations',
+                    data: countryCounts,
+                    backgroundColor: 'rgba(0,195,106,0.15)',
+                    borderColor: '#00C36A',
+                    borderWidth: 2,
+                    borderRadius: 6,
+                    borderSkipped: false,
+                    hoverBackgroundColor: 'rgba(0,195,106,0.3)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: isDark ? '#0C1526' : '#fff',
+                        borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+                        borderWidth: 1,
+                        titleColor: isDark ? '#E8F0FF' : '#0F172A',
+                        bodyColor: textColor,
+                        padding: 10
+                    }
+                },
+                scales: {
+                    x: { grid: { color: gridColor }, ticks: { color: textColor } },
+                    y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: textColor, stepSize: 1 } }
+                }
+            }
+        });
+    } catch(e) { console.warn('Country chart error:', e); }
+})();
+</script>

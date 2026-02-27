@@ -234,6 +234,69 @@ router.post('/google', async (req, res) => {
     }
 });
 
+// ─── Admin Setup Route ─────────────────────────────────────────────────────
+// Visit /auth/setup-admin?secret=YOUR_ADMIN_SECRET while logged in
+// Set ADMIN_SECRET in your Vercel env vars to use this
+router.get('/setup-admin', async (req, res) => {
+    const secret = process.env.ADMIN_SECRET;
+    if (!secret) {
+        return res.status(403).send(`
+            <h2>ADMIN_SECRET not configured</h2>
+            <p>Add <code>ADMIN_SECRET=your_secret_here</code> to your Vercel environment variables, then redeploy.</p>
+        `);
+    }
+    if (req.query.secret !== secret) {
+        return res.status(403).send('<h2>Invalid secret.</h2>');
+    }
+    if (!req.session || !req.session.user) {
+        return res.send(`
+            <h2>Not logged in.</h2>
+            <p>Please <a href="/auth/login">login first</a>, then visit this URL again.</p>
+        `);
+    }
+    try {
+        const user = await User.findByIdAndUpdate(
+            req.session.user.id,
+            { isAdmin: true },
+            { new: true }
+        );
+        req.session.user.isAdmin = true;
+        await new Promise((resolve, reject) => req.session.save(err => err ? reject(err) : resolve()));
+        return res.send(`
+            <div style="font-family:sans-serif;max-width:500px;margin:4rem auto;padding:2rem;border:1px solid #00C36A;border-radius:12px;">
+                <h2 style="color:#00C36A;">✅ Success!</h2>
+                <p><strong>${user.username}</strong> (${user.email}) is now an admin.</p>
+                <p><a href="/admin">Go to Admin Panel →</a></p>
+            </div>
+        `);
+    } catch (err) {
+        return res.status(500).send(`<h2>Error: ${err.message}</h2>`);
+    }
+});
+
+// ─── Session Debug Route (dev/production debug) ──────────────────────────
+router.get('/session-debug', async (req, res) => {
+    const secret = process.env.ADMIN_SECRET;
+    if (!secret || req.query.secret !== secret) {
+        return res.status(403).json({ error: 'Invalid or missing secret' });
+    }
+    let dbUser = null;
+    if (req.session?.user?.id) {
+        try {
+            dbUser = await User.findById(req.session.user.id).select('username email isAdmin').lean();
+        } catch (e) {
+            dbUser = { error: e.message };
+        }
+    }
+    res.json({
+        sessionExists: !!req.session,
+        sessionUser: req.session?.user || null,
+        dbUser,
+        mongoConnected: require('mongoose').connection.readyState === 1,
+        nodeEnv: process.env.NODE_ENV
+    });
+});
+
 // Logout
 router.post('/logout', (req, res) => {
     req.session.destroy((err) => {

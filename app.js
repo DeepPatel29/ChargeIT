@@ -117,11 +117,32 @@ app.use(session({
     }
 }));
 
-app.use((req, res, next) => {
+// Global stats cache (refreshes every 10 min for footer display)
+let _statsCache = { totalStations: 0, countries: 0, _ts: 0 };
+async function getGlobalStats() {
+    const now = Date.now();
+    if (now - _statsCache._ts < 10 * 60 * 1000) return _statsCache;
+    try {
+        const Station = require('./models/Station');
+        const count = await Station.countDocuments();
+        const countryList = await Station.distinct('location.country');
+        _statsCache = { totalStations: count, countries: countryList.length, _ts: now };
+    } catch(e) { /* keep previous cache */ }
+    return _statsCache;
+}
+
+app.use(async (req, res, next) => {
     res.locals.user = req.session.user || null;
     res.locals.dbConnected = dbConnected;
     res.locals.NODE_ENV = process.env.NODE_ENV || 'development';
     res.locals.appName = 'ChargeIT';
+    if (dbConnected) {
+        try {
+            const stats = await getGlobalStats();
+            res.locals.totalStations = stats.totalStations;
+            res.locals.countries = stats.countries;
+        } catch(e) {}
+    }
     next();
 });
 
