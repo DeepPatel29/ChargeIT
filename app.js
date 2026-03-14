@@ -136,6 +136,12 @@ app.use(async (req, res, next) => {
     res.locals.dbConnected = dbConnected;
     res.locals.NODE_ENV = process.env.NODE_ENV || 'development';
     res.locals.appName = 'ChargeIT';
+    res.locals.firebaseApiKey = process.env.FIREBASE_API_KEY;
+    res.locals.firebaseAuthDomain = process.env.FIREBASE_AUTH_DOMAIN;
+    res.locals.firebaseProjectId = process.env.FIREBASE_PROJECT_ID;
+    res.locals.firebaseStorageBucket = process.env.FIREBASE_STORAGE_BUCKET;
+    res.locals.firebaseMessagingSenderId = process.env.FIREBASE_MESSAGING_SENDER_ID;
+    res.locals.firebaseAppId = process.env.FIREBASE_APP_ID;
     if (dbConnected) {
         try {
             const stats = await getGlobalStats();
